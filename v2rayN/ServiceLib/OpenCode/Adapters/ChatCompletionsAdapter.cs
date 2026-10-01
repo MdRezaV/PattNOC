@@ -19,7 +19,7 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
         var body = BuildBody(req);
         if (OpenCodeFreeTier.IsFreeTierTarget(target))
         {
-            OpenCodeFreeTier.ApplyBodyShape(body);
+            OpenCodeFreeTier.ApplyBodyShape(body, Style);
         }
 
         var url = OpenCodeUrl.Combine(target.BaseUrl, "/chat/completions");

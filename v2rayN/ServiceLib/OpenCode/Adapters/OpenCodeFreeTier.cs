@@ -73,36 +73,49 @@ internal static class OpenCodeFreeTier
         msg.Headers.TryAddWithoutValidation("sec-fetch-mode", "cors");
     }
 
-    internal static void ApplyBodyShape(Dictionary<string, object?> body)
+    internal static void ApplyBodyShape(Dictionary<string, object?> body, EOpenCodeApiStyle apiStyle)
     {
         // Mirror the official OpenCode desktop client fingerprint body:
         // four unavailable core tools sorted alphabetically, tool_choice "none",
         // no permissions field, no stream_options field.
         body["tools"] = new List<object?>
         {
-            CreateUnavailableTool("bash"),
-            CreateUnavailableTool("glob"),
-            CreateUnavailableTool("grep"),
-            CreateUnavailableTool("read"),
+            CreateUnavailableTool("bash", apiStyle),
+            CreateUnavailableTool("glob", apiStyle),
+            CreateUnavailableTool("grep", apiStyle),
+            CreateUnavailableTool("read", apiStyle),
         };
         body["tool_choice"] = "none";
         body.Remove("permissions");
         body.Remove("stream_options");
     }
 
-    private static Dictionary<string, object?> CreateUnavailableTool(string name)
+    private static Dictionary<string, object?> CreateUnavailableTool(string name, EOpenCodeApiStyle apiStyle)
     {
-        return new Dictionary<string, object?>
+        var description = "This tool is currently unavailable and must not be used.";
+        var parameters = new Dictionary<string, object?>
         {
-            ["type"] = "function",
-            ["function"] = new Dictionary<string, object?>
+            ["type"] = "object",
+            ["properties"] = new Dictionary<string, object?>(),
+        };
+
+        return apiStyle switch
+        {
+            EOpenCodeApiStyle.Responses => new Dictionary<string, object?>
             {
+                ["type"] = "function",
                 ["name"] = name,
-                ["description"] = "This tool is currently unavailable and must not be used.",
-                ["parameters"] = new Dictionary<string, object?>
+                ["description"] = description,
+                ["parameters"] = parameters,
+            },
+            _ => new Dictionary<string, object?>
+            {
+                ["type"] = "function",
+                ["function"] = new Dictionary<string, object?>
                 {
-                    ["type"] = "object",
-                    ["properties"] = new Dictionary<string, object?>(),
+                    ["name"] = name,
+                    ["description"] = description,
+                    ["parameters"] = parameters,
                 },
             },
         };
