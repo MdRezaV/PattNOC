@@ -76,7 +76,7 @@ internal static class OpenCodeFreeTier
     internal static void ApplyBodyShape(Dictionary<string, object?> body, EOpenCodeApiStyle apiStyle)
     {
         // Mirror the official OpenCode desktop client fingerprint body:
-        // four unavailable core tools sorted alphabetically, tool_choice "none",
+        // four unavailable core tools sorted alphabetically, tool_choice per API style,
         // no permissions field, no stream_options field.
         body["tools"] = new List<object?>
         {
@@ -85,7 +85,9 @@ internal static class OpenCodeFreeTier
             CreateUnavailableTool("grep", apiStyle),
             CreateUnavailableTool("read", apiStyle),
         };
-        body["tool_choice"] = "none";
+        // Responses API upstream only accepts "auto" for tool_choice; Chat Completions
+        // free-tier fingerprint uses "none".
+        body["tool_choice"] = apiStyle == EOpenCodeApiStyle.Responses ? "auto" : "none";
         body.Remove("permissions");
         body.Remove("stream_options");
     }
