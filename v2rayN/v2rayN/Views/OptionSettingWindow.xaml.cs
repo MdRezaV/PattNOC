@@ -22,6 +22,7 @@ public partial class OptionSettingWindow
         });
 
         cmbsystemProxyAdvancedProtocol.ItemsSource = Global.IEProxyProtocols;
+        cmbGlobalProxyType.ItemsSource = Global.GlobalProxyTypes;
         cmbloglevel.ItemsSource = Global.LogLevels;
         cmbdefFingerprint.ItemsSource = Global.Fingerprints;
         cmbdefUserAgent.ItemsSource = Global.UserAgent;
@@ -121,6 +122,13 @@ public partial class OptionSettingWindow
             this.Bind(ViewModel, vm => vm.SystemProxyAdvancedProtocol, v => v.cmbsystemProxyAdvancedProtocol.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SystemProxyExceptions, v => v.txtsystemProxyExceptions.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.CustomSystemProxyPacPath, v => v.txtCustomSystemProxyPacPath.Text).DisposeWith(disposables);
+
+            this.Bind(ViewModel, vm => vm.GlobalProxyEnabled, v => v.togGlobalProxyEnabled.IsChecked).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.GlobalProxyType, v => v.cmbGlobalProxyType.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.GlobalProxyServer, v => v.txtGlobalProxyServer.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.GlobalProxyPort, v => v.txtGlobalProxyPort.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.GlobalProxyUser, v => v.txtGlobalProxyUser.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.GlobalProxyPassword, v => v.txtGlobalProxyPassword.Text).DisposeWith(disposables);
 
             this.Bind(ViewModel, vm => vm.TunAutoRoute, v => v.togAutoRoute.IsChecked).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.TunStrictRoute, v => v.togStrictRoute.IsChecked).DisposeWith(disposables);

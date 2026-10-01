@@ -78,6 +78,28 @@ public static class CoreConfigHandler
                 return ret;
             }
 
+            // PattN global first-hop proxy: apply JSON pass to custom Xray/sing-box configs.
+            // Clash/mihomo custom configs are YAML and are skipped; parse failures leave the file unchanged.
+            var item = AppManager.Instance.Config.UpstreamProxyItem;
+            if (item is not null && item.IsUsable() && node.CoreType is ECoreType.Xray or ECoreType.sing_box)
+            {
+                try
+                {
+                    var customContent = await File.ReadAllTextAsync(fileName);
+                    var modified = node.CoreType == ECoreType.sing_box
+                        ? UpstreamProxyConfigBuilder.ApplySingboxGlobalFirstHop(customContent, item)
+                        : UpstreamProxyConfigBuilder.ApplyXrayGlobalFirstHop(customContent, item);
+                    if (!ReferenceEquals(modified, customContent))
+                    {
+                        await File.WriteAllTextAsync(fileName, modified);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logging.SaveLog(_tag, ex);
+                }
+            }
+
             ret.Msg = string.Format(ResUI.SuccessfulConfiguration, "");
             ret.Success = true;
             return await Task.FromResult(ret);

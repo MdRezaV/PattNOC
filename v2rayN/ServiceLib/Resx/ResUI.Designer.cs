@@ -5003,7 +5003,97 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("TbSetUpstreamProxyDetour", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   查找类似 Global Proxy (First Hop) 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxySettings {
+            get {
+                return ResourceManager.GetString("TbGlobalProxySettings", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Enable global proxy 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyEnable {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyEnable", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Proxy type 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyType {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyType", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Server / Host 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyServer {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyServer", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Port 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyPort {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyPort", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Username (optional) 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyUser {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyUser", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Password (optional) 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyPassword {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyPassword", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 When enabled, all app traffic and generated core configs use this proxy as the first hop. 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyTips {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyTips", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Please fill a valid global proxy server and port 的本地化字符串。
+        /// </summary>
+        public static string MsgGlobalProxyInvalid {
+            get {
+                return ResourceManager.GetString("MsgGlobalProxyInvalid", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Https global proxy is not supported by Xray 的本地化字符串。
+        /// </summary>
+        public static string MsgGlobalProxyHttpsXrayWarning {
+            get {
+                return ResourceManager.GetString("MsgGlobalProxyHttpsXrayWarning", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   查找类似 Short Id 的本地化字符串。
         /// </summary>

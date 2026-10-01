@@ -174,6 +174,7 @@ public static class ConfigHandler
         config.SystemProxyItem ??= new();
         config.WebDavItem ??= new();
         config.CheckUpdateItem ??= new();
+        config.UpstreamProxyItem ??= new UpstreamProxyItem();
         config.Fragment4RayItem ??= new()
         {
             Packets = "tlshello",

@@ -2175,4 +2175,34 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   <data name="OpenCodeStateUnknown" xml:space="preserve">
     <value>Unknown</value>
   </data>
+  <data name="TbGlobalProxySettings" xml:space="preserve">
+    <value>Global Proxy (First Hop)</value>
+  </data>
+  <data name="TbGlobalProxyEnable" xml:space="preserve">
+    <value>Enable global proxy</value>
+  </data>
+  <data name="TbGlobalProxyType" xml:space="preserve">
+    <value>Proxy type</value>
+  </data>
+  <data name="TbGlobalProxyServer" xml:space="preserve">
+    <value>Server / Host</value>
+  </data>
+  <data name="TbGlobalProxyPort" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="TbGlobalProxyUser" xml:space="preserve">
+    <value>Username (optional)</value>
+  </data>
+  <data name="TbGlobalProxyPassword" xml:space="preserve">
+    <value>Password (optional)</value>
+  </data>
+  <data name="TbGlobalProxyTips" xml:space="preserve">
+    <value>When enabled, all app traffic and generated core configs use this proxy as the first hop. Loopback/local core API traffic is never proxied. Https proxy type requires sing-box. Tcping measures connect time via the proxy.</value>
+  </data>
+  <data name="MsgGlobalProxyInvalid" xml:space="preserve">
+    <value>Please fill a valid global proxy server and port</value>
+  </data>
+  <data name="MsgGlobalProxyHttpsXrayWarning" xml:space="preserve">
+    <value>Https global proxy is not supported by Xray; falling back to plain HTTP to the proxy</value>
+  </data>
 </root>

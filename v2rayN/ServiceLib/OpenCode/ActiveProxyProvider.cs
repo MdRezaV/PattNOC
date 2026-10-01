@@ -64,19 +64,22 @@ public sealed class ActiveProxyProvider : IActiveProxyProvider
     public async Task<ActiveProxySnapshot?> TryGetSnapshotAsync(CancellationToken ct = default)
     {
         var profile = await _source.GetActiveProfileAsync(ct);
-        if (profile is null || profile.IndexId.IsNullOrEmpty())
-        {
-            return null;
-        }
-
         var port = _source.GetSocksPort();
-        if (!await _source.ProbeSocksPortAsync(port, ct))
+
+        if (profile is not null && profile.IndexId.IsNotEmpty() && await _source.ProbeSocksPortAsync(port, ct))
         {
-            return null;
+            var proxy = new WebProxy($"{Global.Socks5Protocol}{Global.Loopback}:{port}");
+            return new ActiveProxySnapshot(proxy, port, profile.IndexId, profile.Remarks);
         }
 
-        var proxy = new WebProxy($"{Global.Socks5Protocol}{Global.Loopback}:{port}");
-        return new ActiveProxySnapshot(proxy, port, profile.IndexId, profile.Remarks);
+        // Core not running: fall back to the global upstream proxy when enabled
+        var upstream = AppProxyResolver.Instance.GetUpstreamWebProxy();
+        if (upstream is not null)
+        {
+            return new ActiveProxySnapshot(upstream, 0, string.Empty, null);
+        }
+
+        return null;
     }
 
     public async Task<bool> IsCoreRunningAsync(CancellationToken ct = default)

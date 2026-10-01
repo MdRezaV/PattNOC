@@ -94,6 +94,8 @@ public partial class CoreConfigV2rayService(CoreConfigContext context)
                 ret.Msg = echOutboundError;
                 return ret;
             }
+            // PattN: global first-hop proxy runs last so it never overwrites existing dialerProxy
+            coreConfigContent = ApplyGlobalFirstHopProxy(coreConfigContent);
 
             ret.Msg = string.Format(ResUI.SuccessfulConfiguration, "");
             ret.Success = true;
@@ -246,6 +248,8 @@ public partial class CoreConfigV2rayService(CoreConfigContext context)
                 ret.Msg = echOutboundError;
                 return ret;
             }
+            // PattN: global first-hop proxy also applies to speedtest configs
+            coreConfigContent = ApplyGlobalFirstHopProxy(coreConfigContent);
 
             //ret.Msg =string.Format(ResUI.SuccessfulConfiguration"), node.getSummary());
             ret.Success = true;
@@ -334,6 +338,8 @@ public partial class CoreConfigV2rayService(CoreConfigContext context)
                 ret.Msg = echOutboundError;
                 return ret;
             }
+            // PattN: global first-hop proxy also applies to single-server speedtest configs
+            coreConfigContent = ApplyGlobalFirstHopProxy(coreConfigContent);
 
             ret.Msg = string.Format(ResUI.SuccessfulConfiguration, "");
             ret.Success = true;

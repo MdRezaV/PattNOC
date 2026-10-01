@@ -249,6 +249,24 @@ public class CheckUpdateItem
 }
 
 [Serializable]
+public class UpstreamProxyItem
+{
+    public bool Enabled { get; set; }
+    public EUpstreamProxyType ProxyType { get; set; } = EUpstreamProxyType.Socks5;
+    public string Server { get; set; } = string.Empty;
+    public int Port { get; set; }
+    public string? Username { get; set; }
+    public string? Password { get; set; }
+
+    public bool IsUsable()
+    {
+        return Enabled
+               && !Server.IsNullOrEmpty()
+               && Port is > 0 and < Global.MaxPort;
+    }
+}
+
+[Serializable]
 public class Fragment4RayItem
 {
     public string? Packets { get; set; }

@@ -1024,6 +1024,95 @@
                 </DockPanel>
             </TabItem>
 
+            <TabItem Header="{x:Static resx:ResUI.TbGlobalProxySettings}">
+                <StackPanel Margin="{StaticResource Margin8}" Spacing="4">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            Margin="{StaticResource Margin4}"
+                            VerticalAlignment="Center"
+                            Text="{x:Static resx:ResUI.TbGlobalProxyEnable}" />
+                        <ToggleSwitch
+                            x:Name="togGlobalProxyEnabled"
+                            Margin="{StaticResource Margin4}"
+                            HorizontalAlignment="Left" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            Margin="{StaticResource Margin4}"
+                            VerticalAlignment="Center"
+                            Text="{x:Static resx:ResUI.TbGlobalProxyType}" />
+                        <ComboBox
+                            x:Name="cmbGlobalProxyType"
+                            MinWidth="200"
+                            Margin="{StaticResource Margin4}"
+                            HorizontalAlignment="Left" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            Margin="{StaticResource Margin4}"
+                            VerticalAlignment="Center"
+                            Text="{x:Static resx:ResUI.TbGlobalProxyServer}" />
+                        <TextBox
+                            x:Name="txtGlobalProxyServer"
+                            Width="300"
+                            Margin="{StaticResource Margin4}"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            Margin="{StaticResource Margin4}"
+                            VerticalAlignment="Center"
+                            Text="{x:Static resx:ResUI.TbGlobalProxyPort}" />
+                        <TextBox
+                            x:Name="txtGlobalProxyPort"
+                            Width="120"
+                            Margin="{StaticResource Margin4}"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            Margin="{StaticResource Margin4}"
+                            VerticalAlignment="Center"
+                            Text="{x:Static resx:ResUI.TbGlobalProxyUser}" />
+                        <TextBox
+                            x:Name="txtGlobalProxyUser"
+                            Width="300"
+                            Margin="{StaticResource Margin4}"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            Margin="{StaticResource Margin4}"
+                            VerticalAlignment="Center"
+                            Text="{x:Static resx:ResUI.TbGlobalProxyPassword}" />
+                        <TextBox
+                            x:Name="txtGlobalProxyPassword"
+                            Width="300"
+                            Margin="{StaticResource Margin4}"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            PasswordChar="*"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Margin="{StaticResource Margin4}"
+                        Text="{x:Static resx:ResUI.TbGlobalProxyTips}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </TabItem>
+
             <TabItem Header="{x:Static resx:ResUI.TbSettingsTunMode}">
                 <ScrollViewer VerticalScrollBarVisibility="Visible">
                     <Grid

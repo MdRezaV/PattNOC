@@ -55,6 +55,7 @@ public class Global
     public const string ProxyTag = "proxy";
     public const string DirectTag = "direct";
     public const string BlockTag = "block";
+    public const string UpstreamProxyTag = "app-upstream";
     public const string DnsOutboundTag = "dns";
     public const string DnsTag = "dns-module";
     public const string DirectDnsTag = "direct-dns";
@@ -366,6 +367,13 @@ public class Global
     [
         "Xray",
         "sing_box"
+    ];
+
+    public static readonly List<string> GlobalProxyTypes =
+    [
+        nameof(EUpstreamProxyType.Socks5),
+        nameof(EUpstreamProxyType.Http),
+        nameof(EUpstreamProxyType.Https)
     ];
 
     public static readonly HashSet<EConfigType> XraySupportConfigType =

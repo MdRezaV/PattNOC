@@ -1800,4 +1800,34 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   <data name="MsgEchOutboundTagConflict" xml:space="preserve">
     <value>Le tag "{0}" de EchOutbound est déjà utilisé par un autre outbound</value>
   </data>
+  <data name="TbGlobalProxySettings" xml:space="preserve">
+    <value>Proxy global (premier saut)</value>
+  </data>
+  <data name="TbGlobalProxyEnable" xml:space="preserve">
+    <value>Activer le proxy global</value>
+  </data>
+  <data name="TbGlobalProxyType" xml:space="preserve">
+    <value>Type de proxy</value>
+  </data>
+  <data name="TbGlobalProxyServer" xml:space="preserve">
+    <value>Serveur / Hôte</value>
+  </data>
+  <data name="TbGlobalProxyPort" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="TbGlobalProxyUser" xml:space="preserve">
+    <value>Nom d'utilisateur (optionnel)</value>
+  </data>
+  <data name="TbGlobalProxyPassword" xml:space="preserve">
+    <value>Mot de passe (optionnel)</value>
+  </data>
+  <data name="TbGlobalProxyTips" xml:space="preserve">
+    <value>Lorsqu'il est activé, tout le trafic de l'application et les configurations de cœur générées utilisent ce proxy comme premier saut. Le trafic loopback / API locale du cœur n'est jamais proxyé. Le type de proxy Https nécessite sing-box. Tcping mesure le temps de connexion via le proxy.</value>
+  </data>
+  <data name="MsgGlobalProxyInvalid" xml:space="preserve">
+    <value>Veuillez saisir un serveur et un port proxy global valides</value>
+  </data>
+  <data name="MsgGlobalProxyHttpsXrayWarning" xml:space="preserve">
+    <value>Xray ne prend pas en charge le proxy global Https ; retour à HTTP simple vers le proxy</value>
+  </data>
 </root>

@@ -1927,4 +1927,34 @@
   <data name="MsgEchOutboundTagConflict" xml:space="preserve">
     <value>EchOutbound 的 tag "{0}" 已被其他出站使用</value>
   </data>
+  <data name="TbGlobalProxySettings" xml:space="preserve">
+    <value>全局代理（第一跳）</value>
+  </data>
+  <data name="TbGlobalProxyEnable" xml:space="preserve">
+    <value>启用全局代理</value>
+  </data>
+  <data name="TbGlobalProxyType" xml:space="preserve">
+    <value>代理类型</value>
+  </data>
+  <data name="TbGlobalProxyServer" xml:space="preserve">
+    <value>服务器 / 主机</value>
+  </data>
+  <data name="TbGlobalProxyPort" xml:space="preserve">
+    <value>端口</value>
+  </data>
+  <data name="TbGlobalProxyUser" xml:space="preserve">
+    <value>用户名（可选）</value>
+  </data>
+  <data name="TbGlobalProxyPassword" xml:space="preserve">
+    <value>密码（可选）</value>
+  </data>
+  <data name="TbGlobalProxyTips" xml:space="preserve">
+    <value>启用后，所有应用流量和生成的核心配置都通过此代理作为第一跳。回环/本地核心 API 流量永不走代理。Https 代理类型需要 sing-box。Tcping 通过代理测量连接时间。</value>
+  </data>
+  <data name="MsgGlobalProxyInvalid" xml:space="preserve">
+    <value>请填写有效的全局代理服务器和端口</value>
+  </data>
+  <data name="MsgGlobalProxyHttpsXrayWarning" xml:space="preserve">
+    <value>Xray 不支持 Https 全局代理，将回退为普通 HTTP 连接代理</value>
+  </data>
 </root>

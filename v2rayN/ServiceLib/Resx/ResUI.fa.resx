@@ -1809,4 +1809,34 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   <data name="MsgEchOutboundTagConflict" xml:space="preserve">
     <value>تگ "{0}" در EchOutbound قبلاً توسط outbound دیگری استفاده شده است</value>
   </data>
+  <data name="TbGlobalProxySettings" xml:space="preserve">
+    <value>پراکسی سراسری (هپ اول)</value>
+  </data>
+  <data name="TbGlobalProxyEnable" xml:space="preserve">
+    <value>فعال‌سازی پراکسی سراسری</value>
+  </data>
+  <data name="TbGlobalProxyType" xml:space="preserve">
+    <value>نوع پراکسی</value>
+  </data>
+  <data name="TbGlobalProxyServer" xml:space="preserve">
+    <value>سرور / میزبان</value>
+  </data>
+  <data name="TbGlobalProxyPort" xml:space="preserve">
+    <value>پورت</value>
+  </data>
+  <data name="TbGlobalProxyUser" xml:space="preserve">
+    <value>نام کاربری (اختیاری)</value>
+  </data>
+  <data name="TbGlobalProxyPassword" xml:space="preserve">
+    <value>رمز عبور (اختیاری)</value>
+  </data>
+  <data name="TbGlobalProxyTips" xml:space="preserve">
+    <value>هنگام فعال‌سازی، تمام ترافیک برنامه و پیکربندی‌های هسته تولیدشده از این پراکسی به‌عنوان هپ اول استفاده می‌کنند. ترافیک لوک‌بک / API هسته محلی هرگز پروکسی نمی‌شود. نوع Https پراکسی نیاز به sing-box دارد. Tcping زمان اتصال را از طریق پراکسی اندازه‌گیری می‌کند.</value>
+  </data>
+  <data name="MsgGlobalProxyInvalid" xml:space="preserve">
+    <value>لطفاً سرور و پورت معتبری برای پراکسی سراسری وارد کنید</value>
+  </data>
+  <data name="MsgGlobalProxyHttpsXrayWarning" xml:space="preserve">
+    <value>پراکسی سراسری Https توسط Xray پشتیبانی نمی‌شود؛ به HTTP ساده به پراکسی برمی‌گردد</value>
+  </data>
 </root>

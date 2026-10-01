@@ -55,12 +55,12 @@ public static class ConnectionHandler
     }
 
     /// <summary>
-    /// Creates local SOCKS proxy instance.
+    /// Resolves the proxy for ping/IP checks: local core SOCKS when available,
+    /// otherwise the global upstream proxy when enabled, else direct.
     /// </summary>
-    private static async Task<WebProxy?> GetWebProxy()
+    private static Task<IWebProxy?> GetWebProxy()
     {
-        var port = AppManager.Instance.GetLocalPort(EInboundProtocol.socks);
-        return new WebProxy($"socks5://{Global.Loopback}:{port}");
+        return AppProxyResolver.Instance.ResolveAsync(true);
     }
 
     /// <summary>

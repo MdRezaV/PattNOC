@@ -1935,4 +1935,34 @@
   <data name="MsgEchOutboundTagConflict" xml:space="preserve">
     <value>Тег "{0}" в EchOutbound уже используется другим outbound</value>
   </data>
+  <data name="TbGlobalProxySettings" xml:space="preserve">
+    <value>Глобальный прокси (первый hop)</value>
+  </data>
+  <data name="TbGlobalProxyEnable" xml:space="preserve">
+    <value>Включить глобальный прокси</value>
+  </data>
+  <data name="TbGlobalProxyType" xml:space="preserve">
+    <value>Тип прокси</value>
+  </data>
+  <data name="TbGlobalProxyServer" xml:space="preserve">
+    <value>Сервер / Хост</value>
+  </data>
+  <data name="TbGlobalProxyPort" xml:space="preserve">
+    <value>Порт</value>
+  </data>
+  <data name="TbGlobalProxyUser" xml:space="preserve">
+    <value>Имя пользователя (необязательно)</value>
+  </data>
+  <data name="TbGlobalProxyPassword" xml:space="preserve">
+    <value>Пароль (необязательно)</value>
+  </data>
+  <data name="TbGlobalProxyTips" xml:space="preserve">
+    <value>При включении весь трафик приложения и сгенерированные конфигурации ядра используют этот прокси как первый hop. Loopback / локальный API ядра никогда не проксируется. Тип прокси Https требует sing-box. Tcping измеряет время подключения через прокси.</value>
+  </data>
+  <data name="MsgGlobalProxyInvalid" xml:space="preserve">
+    <value>Укажите корректный сервер и порт глобального прокси</value>
+  </data>
+  <data name="MsgGlobalProxyHttpsXrayWarning" xml:space="preserve">
+    <value>Xray не поддерживает Https глобальный прокси; используется обычный HTTP к прокси</value>
+  </data>
 </root>

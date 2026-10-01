@@ -553,22 +553,32 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             return responseTime;
         }
 
-        if (!IPAddress.TryParse(url, out var ipAddress))
-        {
-            var ipHostInfo = await Dns.GetHostEntryAsync(url, ct);
-            ipAddress = ipHostInfo.AddressList.First();
-        }
-
-        IPEndPoint endPoint = new(ipAddress, port);
-        using Socket clientSocket = new(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
+        var upstreamItem = _config.UpstreamProxyItem;
         var timer = Stopwatch.StartNew();
         try
         {
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
-            await clientSocket.ConnectAsync(endPoint, linkedCts.Token).ConfigureAwait(false);
-            responseTime = (int)timer.ElapsedMilliseconds;
+
+            if (upstreamItem is not null && upstreamItem.IsUsable())
+            {
+                // Route tcping through the upstream proxy (CONNECT tunnel)
+                using var tcp = await UpstreamProxyTunnel.ConnectAsync(upstreamItem, url, port, linkedCts.Token);
+                responseTime = (int)timer.ElapsedMilliseconds;
+            }
+            else
+            {
+                if (!IPAddress.TryParse(url, out var ipAddress))
+                {
+                    var ipHostInfo = await Dns.GetHostEntryAsync(url, ct);
+                    ipAddress = ipHostInfo.AddressList.First();
+                }
+
+                IPEndPoint endPoint = new(ipAddress, port);
+                using Socket clientSocket = new(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                await clientSocket.ConnectAsync(endPoint, linkedCts.Token).ConfigureAwait(false);
+                responseTime = (int)timer.ElapsedMilliseconds;
+            }
         }
         finally
         {
