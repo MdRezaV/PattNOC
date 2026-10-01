@@ -88,6 +88,15 @@
                     <materialDesign:PackIcon VerticalAlignment="Center" Kind="LightningBolt" />
                 </Button>
                 <Button
+                    x:Name="btnTestOpenCode"
+                    Width="30"
+                    Height="30"
+                    Margin="{StaticResource MarginLeftRight4}"
+                    Style="{StaticResource MaterialDesignFloatingActionMiniLightButton}"
+                    ToolTip="{x:Static resx:ResUI.menuTestOpenCode}">
+                    <materialDesign:PackIcon VerticalAlignment="Center" Kind="Robot" />
+                </Button>
+                <Button
                     x:Name="menuMixedTestServer"
                     Width="30"
                     Height="30"
@@ -167,6 +176,11 @@
                             Height="{StaticResource MenuItemHeight}"
                             Header="{x:Static resx:ResUI.menuSpeedServer}"
                             InputGestureText="Ctrl+T" />
+                        <MenuItem
+                            x:Name="menuTestOpenCode"
+                            Height="{StaticResource MenuItemHeight}"
+                            Header="{x:Static resx:ResUI.menuTestOpenCode}"
+                            InputGestureText="Ctrl+Shift+R" />
                         <MenuItem
                             x:Name="menuSortServerResult"
                             Height="{StaticResource MenuItemHeight}"
@@ -332,6 +346,18 @@
                         Binding="{Binding SpeedVal}"
                         ExName="SpeedVal"
                         Header="{x:Static resx:ResUI.LvTestSpeed}">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="HorizontalAlignment" Value="Right" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </base:MyDGTextColumn>
+
+                    <base:MyDGTextColumn
+                        Width="140"
+                        Binding="{Binding OpenCodeVal}"
+                        ExName="OpenCodeVal"
+                        Header="{x:Static resx:ResUI.LvTestOpenCode}">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="{x:Type TextBlock}">
                                 <Setter Property="HorizontalAlignment" Value="Right" />

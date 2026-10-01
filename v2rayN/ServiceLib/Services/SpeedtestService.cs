@@ -114,6 +114,10 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                     await RunMixedTestAsync(lstSelected, completedIds, _config.SpeedTestItem.MixedConcurrencyCount, true,
                         ct);
                     break;
+
+                case ESpeedActionType.OpenCodetest:
+                    await RunOpenCodeBatchAsync(lstSelected, completedIds, ct);
+                    break;
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -193,6 +197,10 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
 
                 case ESpeedActionType.Mixedtest:
                     await UpdateFunc(it.IndexId, message, message);
+                    break;
+
+                case ESpeedActionType.OpenCodetest:
+                    await UpdateOpenCodeFunc(it.IndexId, message);
                     break;
             }
         }
@@ -484,6 +492,95 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         });
     }
 
+    private async Task RunOpenCodeBatchAsync(List<ServerTestItem> lstSelected,
+        ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
+    {
+        var pageSize = Math.Clamp(_config.SpeedTestItem.MixedConcurrencyCount, 1, 4);
+        var lstTest = GetTestBatchItem(lstSelected, pageSize);
+
+        foreach (var lst in lstTest)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            ProcessService processService = null;
+            try
+            {
+                processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(lst);
+                if (processService is null)
+                {
+                    foreach (var it in lst)
+                    {
+                        await UpdateOpenCodeFunc(it.IndexId, ResUI.OpenCodeColConnectionFailed);
+                        completedIds.TryAdd(it.IndexId, 0);
+                    }
+                    continue;
+                }
+
+                await Task.Delay(1000, ct);
+
+                var parallelOptions = new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = pageSize,
+                    CancellationToken = ct,
+                };
+
+                await Parallel.ForEachAsync(lst, parallelOptions, async (it, innerCt) =>
+                {
+                    if (!it.AllowTest)
+                    {
+                        await UpdateOpenCodeFunc(it.IndexId, ResUI.SpeedtestingSkip);
+                        completedIds.TryAdd(it.IndexId, 0);
+                        return;
+                    }
+
+                    try
+                    {
+                        await DoOpenCodeTest(it, completedIds, innerCt);
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logging.SaveLog(_tag, ex);
+                    }
+                });
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logging.SaveLog(_tag, ex);
+            }
+            finally
+            {
+                if (processService != null)
+                {
+                    await processService.StopAsync();
+                }
+            }
+
+            await Task.Delay(_delayInterval, ct);
+        }
+    }
+
+    private async Task DoOpenCodeTest(ServerTestItem it,
+        ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
+    {
+        var webProxy = new WebProxy($"socks5://{Global.Loopback}:{it.Port}");
+        var result = await OpenCodeManager.Instance.TestConnectionThroughProxyAsync(
+            webProxy, it.IndexId, it.Profile?.Remarks, ct);
+        var message = OpenCodeColumnStatus.Format(result);
+
+        ProfileExManager.Instance.SetTestOpenCode(it.IndexId, message);
+        await UpdateOpenCodeFunc(it.IndexId, message);
+
+        completedIds.TryAdd(it.IndexId, 0);
+    }
+
     private async Task<int> DoRealPing(ServerTestItem it,
         ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
     {
@@ -612,6 +709,11 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         {
             ProfileExManager.Instance.SetTestMessage(indexId, speed);
         }
+    }
+
+    private async Task UpdateOpenCodeFunc(string indexId, string message)
+    {
+        await _updateFunc?.Invoke(new() { IndexId = indexId, OpenCode = message });
     }
 
     private async Task UpdateIpInfoFunc(string indexId, string ip)

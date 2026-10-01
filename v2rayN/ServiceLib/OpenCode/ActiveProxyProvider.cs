@@ -92,3 +92,28 @@ public sealed class ActiveProxyProvider : IActiveProxyProvider
         return await TryGetSnapshotAsync(ct) is not null;
     }
 }
+
+public sealed class FixedProxyProvider : IActiveProxyProvider
+{
+    private readonly ActiveProxySnapshot _snapshot;
+
+    public FixedProxyProvider(ActiveProxySnapshot snapshot)
+    {
+        _snapshot = snapshot;
+    }
+
+    public Task<ActiveProxySnapshot?> TryGetSnapshotAsync(CancellationToken ct = default)
+    {
+        return Task.FromResult<ActiveProxySnapshot?>(_snapshot);
+    }
+
+    public Task<bool> IsCoreRunningAsync(CancellationToken ct = default)
+    {
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> IsProxyAvailableAsync(CancellationToken ct = default)
+    {
+        return Task.FromResult(true);
+    }
+}

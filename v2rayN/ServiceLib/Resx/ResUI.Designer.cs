@@ -6317,5 +6317,140 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("OpenCodeStateUnknown", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   查找类似 Test OpenCode 的本地化字符串。
+        /// </summary>
+        public static string menuTestOpenCode {
+            get {
+                return ResourceManager.GetString("menuTestOpenCode", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 OpenCode Status 的本地化字符串。
+        /// </summary>
+        public static string LvTestOpenCode {
+            get {
+                return ResourceManager.GetString("LvTestOpenCode", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Testing… 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColTesting {
+            get {
+                return ResourceManager.GetString("OpenCodeColTesting", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Operational 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColWorking {
+            get {
+                return ResourceManager.GetString("OpenCodeColWorking", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Access denied 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColForbidden {
+            get {
+                return ResourceManager.GetString("OpenCodeColForbidden", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Authentication failed 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColUnauthenticated {
+            get {
+                return ResourceManager.GetString("OpenCodeColUnauthenticated", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 IP limit reached 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColIpLimit {
+            get {
+                return ResourceManager.GetString("OpenCodeColIpLimit", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Rate limit reached 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColRateLimited {
+            get {
+                return ResourceManager.GetString("OpenCodeColRateLimited", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Connection failed 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColConnectionFailed {
+            get {
+                return ResourceManager.GetString("OpenCodeColConnectionFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Request timed out 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColTimeout {
+            get {
+                return ResourceManager.GetString("OpenCodeColTimeout", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Provider error 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColProviderError {
+            get {
+                return ResourceManager.GetString("OpenCodeColProviderError", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Model not found 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColModelNotFound {
+            get {
+                return ResourceManager.GetString("OpenCodeColModelNotFound", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Invalid request 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColUnsupported {
+            get {
+                return ResourceManager.GetString("OpenCodeColUnsupported", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 No proxy route 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColNoProxy {
+            get {
+                return ResourceManager.GetString("OpenCodeColNoProxy", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Unknown 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColUnknown {
+            get {
+                return ResourceManager.GetString("OpenCodeColUnknown", resourceCulture);
+            }
+        }
     }
 }

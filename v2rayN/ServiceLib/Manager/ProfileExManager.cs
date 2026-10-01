@@ -156,6 +156,14 @@ public class ProfileExManager
         IndexIdEnqueue(indexId);
     }
 
+    public void SetTestOpenCode(string indexId, string openCode)
+    {
+        var profileEx = GetProfileExItem(indexId);
+
+        profileEx.OpenCode = openCode;
+        IndexIdEnqueue(indexId);
+    }
+
     public void SetSort(string indexId, int sort)
     {
         var profileEx = GetProfileExItem(indexId);

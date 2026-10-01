@@ -2205,4 +2205,49 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   <data name="MsgGlobalProxyHttpsXrayWarning" xml:space="preserve">
     <value>Https global proxy is not supported by Xray; falling back to plain HTTP to the proxy</value>
   </data>
+  <data name="menuTestOpenCode" xml:space="preserve">
+    <value>Test OpenCode</value>
+  </data>
+  <data name="LvTestOpenCode" xml:space="preserve">
+    <value>OpenCode Status</value>
+  </data>
+  <data name="OpenCodeColTesting" xml:space="preserve">
+    <value>Testing…</value>
+  </data>
+  <data name="OpenCodeColWorking" xml:space="preserve">
+    <value>Operational</value>
+  </data>
+  <data name="OpenCodeColForbidden" xml:space="preserve">
+    <value>Access denied</value>
+  </data>
+  <data name="OpenCodeColUnauthenticated" xml:space="preserve">
+    <value>Authentication failed</value>
+  </data>
+  <data name="OpenCodeColIpLimit" xml:space="preserve">
+    <value>IP limit reached</value>
+  </data>
+  <data name="OpenCodeColRateLimited" xml:space="preserve">
+    <value>Rate limit reached</value>
+  </data>
+  <data name="OpenCodeColConnectionFailed" xml:space="preserve">
+    <value>Connection failed</value>
+  </data>
+  <data name="OpenCodeColTimeout" xml:space="preserve">
+    <value>Request timed out</value>
+  </data>
+  <data name="OpenCodeColProviderError" xml:space="preserve">
+    <value>Provider error</value>
+  </data>
+  <data name="OpenCodeColModelNotFound" xml:space="preserve">
+    <value>Model not found</value>
+  </data>
+  <data name="OpenCodeColUnsupported" xml:space="preserve">
+    <value>Invalid request</value>
+  </data>
+  <data name="OpenCodeColNoProxy" xml:space="preserve">
+    <value>No proxy route</value>
+  </data>
+  <data name="OpenCodeColUnknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
 </root>
