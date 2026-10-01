@@ -242,7 +242,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
     {
         if (pageSize <= 0)
         {
-            pageSize = Math.Min(lstSelected.Count, _speedTestPageSize);
+            pageSize = _config.SpeedTestItem.MixedConcurrencyCount;
         }
         var lstTest = GetTestBatchItem(lstSelected, pageSize);
 
