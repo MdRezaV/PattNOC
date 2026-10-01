@@ -447,9 +447,11 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
                 ? ResUI.OpenCodeProxyUnavailable
                 : string.Format(ResUI.OpenCodeProxyPort, snapshot.SocksPort);
 
-            if (snapshot?.WebProxy is not null)
+            // Configuration egress IP via local core only — never the first-hop proxy.
+            var localProxy = await AppProxyResolver.Instance.ResolveLocalCoreOnlyAsync();
+            if (localProxy is not null)
             {
-                var ipInfo = await ConnectionHandler.GetIPInfo(snapshot.WebProxy);
+                var ipInfo = await ConnectionHandler.GetIPInfo(localProxy);
                 EgressIpText = ipInfo is { } info
                     ? $"{info.Ip} {info.Country}"
                     : Global.None;

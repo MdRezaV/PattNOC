@@ -180,6 +180,35 @@ public class CoreConfigGlobalProxyTests
     }
 
     [Test]
+    public async Task WireGuard_PublicEndpoint_DetouredViaPeersEndpoint()
+    {
+        var config = CoreConfigTestFactory.CreateConfigWithGlobalProxy(ECoreType.Xray,
+            EUpstreamProxyType.Socks5, "192.0.2.10", 1080);
+        var node = CoreConfigTestFactory.CreateWireguardNode(ECoreType.Xray);
+        node.Address = "wg.example.com";
+
+        var cfg = await Generate(config, node);
+
+        var wg = cfg.outbounds.First(o => o.protocol == "wireguard");
+        await wg.streamSettings!.sockopt!.dialerProxy.Should().BeEqualTo(Global.UpstreamProxyTag);
+    }
+
+    [Test]
+    public async Task WireGuard_PrivateEndpoint_NotDetoured()
+    {
+        var config = CoreConfigTestFactory.CreateConfigWithGlobalProxy(ECoreType.Xray,
+            EUpstreamProxyType.Socks5, "192.0.2.10", 1080);
+        var node = CoreConfigTestFactory.CreateWireguardNode(ECoreType.Xray);
+        node.Address = "10.0.0.5";
+
+        var cfg = await Generate(config, node);
+
+        var wg = cfg.outbounds.First(o => o.protocol == "wireguard");
+        var detour = wg.streamSettings?.sockopt?.dialerProxy;
+        await detour.Should().BeNull();
+    }
+
+    [Test]
     public async Task ProxyChain_ChainChildrenKeepValidDialerProxies()
     {
         var config = CoreConfigTestFactory.CreateConfigWithGlobalProxy(ECoreType.Xray,

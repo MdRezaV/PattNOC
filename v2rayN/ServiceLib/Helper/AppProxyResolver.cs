@@ -16,6 +16,12 @@ public interface IAppProxyResolver
     /// </summary>
     Task<IWebProxy?> ResolveAsync(bool useLocalV2ray, CancellationToken ct = default);
 
+    /// <summary>
+    /// Local core SOCKS only. Never falls back to the first-hop upstream.
+    /// Used by availability / IP-info checks that must report the configuration egress IP.
+    /// </summary>
+    Task<IWebProxy?> ResolveLocalCoreOnlyAsync(CancellationToken ct = default);
+
     /// <summary>Raw upstream WebProxy from config, or null when disabled/invalid.</summary>
     IWebProxy? GetUpstreamWebProxy();
 
@@ -56,10 +62,10 @@ public sealed class AppProxyResolver : IAppProxyResolver
 
         if (useLocalV2ray)
         {
-            var port = AppManager.Instance.GetLocalPort(EInboundProtocol.socks);
-            if (await _probe.IsAvailableAsync(port, ct))
+            var local = await TryResolveLocalCoreAsync(ct);
+            if (local is not null)
             {
-                return new LoopbackBypassProxy(new WebProxy($"{Global.Socks5Protocol}{Global.Loopback}:{port}"));
+                return local;
             }
             // Core not running: fall through to upstream if enabled
         }
@@ -70,6 +76,21 @@ public sealed class AppProxyResolver : IAppProxyResolver
         }
 
         return new LoopbackBypassProxy(BuildUpstreamWebProxy(item)!);
+    }
+
+    public async Task<IWebProxy?> ResolveLocalCoreOnlyAsync(CancellationToken ct = default)
+    {
+        return await TryResolveLocalCoreAsync(ct);
+    }
+
+    private async Task<IWebProxy?> TryResolveLocalCoreAsync(CancellationToken ct)
+    {
+        var port = AppManager.Instance.GetLocalPort(EInboundProtocol.socks);
+        if (await _probe.IsAvailableAsync(port, ct))
+        {
+            return new LoopbackBypassProxy(new WebProxy($"{Global.Socks5Protocol}{Global.Loopback}:{port}"));
+        }
+        return null;
     }
 
     public static IWebProxy? BuildUpstreamWebProxy(UpstreamProxyItem item)

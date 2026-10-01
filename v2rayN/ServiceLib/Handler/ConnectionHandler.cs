@@ -5,41 +5,26 @@ public static class ConnectionHandler
     private static readonly string _tag = "ConnectionHandler";
 
     /// <summary>
-    /// Runs ping and IP checks.
+    /// Runs ping and IP checks against the active configuration egress.
+    /// Uses the local core only — never the first-hop upstream — so the reported
+    /// IP is the configuration exit IP, not the proxy's own address.
     /// </summary>
     public static async Task<AvailabilityCheckResult> RunAvailabilityCheck()
     {
-        var time = await GetRealPingTimeInfo();
-        var ip = time > 0 ? await GetIPInfo() : Global.None;
-
-        return new AvailabilityCheckResult(time, ip);
-    }
-
-    /// <summary>
-    /// Gets IP information using the default local proxy.
-    /// </summary>
-    private static async Task<string?> GetIPInfo()
-    {
         var webProxy = await GetWebProxy();
+        if (webProxy is null)
+        {
+            // Core not running: no configuration egress to report
+            return new AvailabilityCheckResult(-1, Global.None);
+        }
 
-        var ipInfo = await GetIPInfo(webProxy);
-        return ipInfo?.ToString() ?? Global.None;
-    }
-
-    /// <summary>
-    /// Measures real ping time using configured test URL.
-    /// </summary>
-    private static async Task<int> GetRealPingTimeInfo()
-    {
-        var responseTime = -1;
+        var time = -1;
         try
         {
-            var webProxy = await GetWebProxy();
-
             for (var i = 0; i < 2; i++)
             {
-                responseTime = await GetRealPingTime(webProxy);
-                if (responseTime > 0)
+                time = await GetRealPingTime(webProxy);
+                if (time > 0)
                 {
                     break;
                 }
@@ -49,18 +34,25 @@ public static class ConnectionHandler
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
-            return -1;
+            return new AvailabilityCheckResult(-1, Global.None);
         }
-        return responseTime;
+
+        var ip = Global.None;
+        if (time > 0)
+        {
+            var ipInfo = await GetIPInfo(webProxy);
+            ip = ipInfo?.ToString() ?? Global.None;
+        }
+        return new AvailabilityCheckResult(time, ip);
     }
 
     /// <summary>
-    /// Resolves the proxy for ping/IP checks: local core SOCKS when available,
-    /// otherwise the global upstream proxy when enabled, else direct.
+    /// Resolves the proxy for ping/IP checks: local core SOCKS only.
+    /// Does not fall back to the first-hop upstream — that would report the proxy IP.
     /// </summary>
     private static Task<IWebProxy?> GetWebProxy()
     {
-        return AppProxyResolver.Instance.ResolveAsync(true);
+        return AppProxyResolver.Instance.ResolveLocalCoreOnlyAsync();
     }
 
     /// <summary>

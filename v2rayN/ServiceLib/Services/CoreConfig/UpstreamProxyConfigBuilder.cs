@@ -122,10 +122,7 @@ internal static class UpstreamProxyConfigBuilder
             {
                 continue;
             }
-            var address = outbound["settings"]?["servers"]?.AsArray()?.FirstOrDefault()?["address"]?.ToString()
-                ?? outbound["settings"]?["vnext"]?.AsArray()?.FirstOrDefault()?["address"]?.ToString()
-                ?? outbound["settings"]?["address"]?.ToString()
-                ?? string.Empty;
+            var address = ExtractXrayServerAddress(outbound, protocol);
             if (address.IsNullOrEmpty() || Utils.IsPrivateNetwork(address))
             {
                 continue;
@@ -152,6 +149,40 @@ internal static class UpstreamProxyConfigBuilder
         }
 
         return JsonUtils.Serialize(cfg);
+    }
+
+    /// <summary>
+    /// Xray WireGuard keeps the real server in settings.peers[].endpoint;
+    /// settings.address is the local interface address and must not be used
+    /// to decide whether to detour.
+    /// </summary>
+    private static string ExtractXrayServerAddress(JsonObject outbound, string? protocol)
+    {
+        if (protocol == "wireguard")
+        {
+            var endpoint = outbound["settings"]?["peers"]?.AsArray()?.FirstOrDefault()?["endpoint"]?.ToString();
+            return StripHostPort(endpoint);
+        }
+        var address = outbound["settings"]?["servers"]?.AsArray()?.FirstOrDefault()?["address"]?.ToString()
+            ?? outbound["settings"]?["vnext"]?.AsArray()?.FirstOrDefault()?["address"]?.ToString()
+            ?? outbound["settings"]?["address"]?.ToString()
+            ?? string.Empty;
+        return address;
+    }
+
+    private static string StripHostPort(string? endpoint)
+    {
+        if (endpoint.IsNullOrEmpty())
+        {
+            return string.Empty;
+        }
+        if (endpoint.StartsWith('['))
+        {
+            var end = endpoint.IndexOf(']');
+            return end > 0 ? endpoint[1..end] : endpoint;
+        }
+        var idx = endpoint.LastIndexOf(':');
+        return idx > 0 ? endpoint[..idx] : endpoint;
     }
 
     public static string ApplySingboxGlobalFirstHop(string coreConfigContent, UpstreamProxyItem? item)

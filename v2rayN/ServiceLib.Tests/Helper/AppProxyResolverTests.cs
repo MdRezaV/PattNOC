@@ -173,6 +173,36 @@ public class AppProxyResolverTests
     }
 
     [Test]
+    public async Task ResolveLocalCoreOnly_ProbeSucceeds_ReturnsLocalSocks()
+    {
+        var config = CoreConfigTestFactory.CreateConfigWithGlobalProxy(ECoreType.Xray,
+            EUpstreamProxyType.Socks5, "10.0.0.1", 1080);
+        CoreConfigTestFactory.BindAppManagerConfig(config);
+
+        var resolver = CreateResolver(new FakeProbe(true), config.UpstreamProxyItem);
+        var proxy = await resolver.ResolveLocalCoreOnlyAsync();
+
+        await proxy.Should().NotBeNull();
+        var bypass = (LoopbackBypassProxy)proxy!;
+        var target = bypass.GetProxy(new Uri("http://example.com/"));
+        await target.Should().NotBeNull();
+        await target!.Host.Should().BeEqualTo(Global.Loopback);
+    }
+
+    [Test]
+    public async Task ResolveLocalCoreOnly_ProbeFails_DoesNotFallBackToUpstream()
+    {
+        var config = CoreConfigTestFactory.CreateConfigWithGlobalProxy(ECoreType.Xray,
+            EUpstreamProxyType.Http, "203.0.113.5", 3128);
+        CoreConfigTestFactory.BindAppManagerConfig(config);
+
+        var resolver = CreateResolver(new FakeProbe(false), config.UpstreamProxyItem);
+        var proxy = await resolver.ResolveLocalCoreOnlyAsync();
+
+        await proxy.Should().BeNull();
+    }
+
+    [Test]
     public async Task LoopbackBypassProxy_LoopbackTargets_NeverProxied()
     {
         var inner = new WebProxy("socks5://1.2.3.4:1080");
