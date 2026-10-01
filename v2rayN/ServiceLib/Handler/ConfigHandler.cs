@@ -197,6 +197,9 @@ public static class ConfigHandler
         }
         config.GlobalHotkeys ??= [];
 
+        config.OpenCodeItem ??= OpenCodeConfigDefaults.Create();
+        OpenCodeConfigDefaults.Normalize(config.OpenCodeItem);
+
         if (config.SystemProxyItem.SystemProxyExceptions.IsNullOrEmpty())
         {
             config.SystemProxyItem.SystemProxyExceptions = Utils.IsWindows() ? Global.SystemProxyExceptionsWindows : Global.SystemProxyExceptionsLinux;
