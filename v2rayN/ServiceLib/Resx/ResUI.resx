@@ -1935,4 +1935,319 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   <data name="MsgEchOutboundTagConflict" xml:space="preserve">
     <value>The tag "{0}" of EchOutbound is already used by another outbound</value>
   </data>
+  <data name="menuOpenCode" xml:space="preserve">
+    <value>OpenCode</value>
+  </data>
+  <data name="OpenCodeTitle" xml:space="preserve">
+    <value>OpenCode Integration</value>
+  </data>
+  <data name="OpenCodeTabDashboard" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="OpenCodeTabModels" xml:space="preserve">
+    <value>Models</value>
+  </data>
+  <data name="OpenCodeTabGateway" xml:space="preserve">
+    <value>Gateway</value>
+  </data>
+  <data name="OpenCodeTabSettings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="OpenCodeEnabled" xml:space="preserve">
+    <value>Enable OpenCode</value>
+  </data>
+  <data name="OpenCodeGatewayEnabled" xml:space="preserve">
+    <value>Enable local gateway</value>
+  </data>
+  <data name="OpenCodeDefaultTarget" xml:space="preserve">
+    <value>Default target</value>
+  </data>
+  <data name="OpenCodeDefaultModel" xml:space="preserve">
+    <value>Default model</value>
+  </data>
+  <data name="OpenCodeGatewayHost" xml:space="preserve">
+    <value>Gateway host</value>
+  </data>
+  <data name="OpenCodeGatewayPort" xml:space="preserve">
+    <value>Gateway port</value>
+  </data>
+  <data name="OpenCodeConnectTimeout" xml:space="preserve">
+    <value>Connect timeout (s)</value>
+  </data>
+  <data name="OpenCodeRequestTimeout" xml:space="preserve">
+    <value>Request timeout (s)</value>
+  </data>
+  <data name="OpenCodeMaxRetry" xml:space="preserve">
+    <value>Max retry (transient only)</value>
+  </data>
+  <data name="OpenCodeMaxConcurrent" xml:space="preserve">
+    <value>Max concurrent requests</value>
+  </data>
+  <data name="OpenCodeTargetName" xml:space="preserve">
+    <value>Target name</value>
+  </data>
+  <data name="OpenCodeTargetBaseUrl" xml:space="preserve">
+    <value>Base URL</value>
+  </data>
+  <data name="OpenCodeTargetCatalogUrl" xml:space="preserve">
+    <value>Catalog URL</value>
+  </data>
+  <data name="OpenCodeApiKey" xml:space="preserve">
+    <value>API key (optional)</value>
+  </data>
+  <data name="OpenCodeApiKeyOptionalHint" xml:space="preserve">
+    <value>API key is optional for OpenCode Free. Leave empty to send no Authorization header.</value>
+  </data>
+  <data name="OpenCodeApiKeySet" xml:space="preserve">
+    <value>API key is set</value>
+  </data>
+  <data name="OpenCodeApiKeyNotSet" xml:space="preserve">
+    <value>No API key (keyless)</value>
+  </data>
+  <data name="OpenCodeSaveApiKey" xml:space="preserve">
+    <value>Save API key</value>
+  </data>
+  <data name="OpenCodeClearApiKey" xml:space="preserve">
+    <value>Clear API key</value>
+  </data>
+  <data name="OpenCodeRefreshModels" xml:space="preserve">
+    <value>Refresh models</value>
+  </data>
+  <data name="OpenCodeTestConnection" xml:space="preserve">
+    <value>Test connection</value>
+  </data>
+  <data name="OpenCodeSave" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="OpenCodeGatewayState" xml:space="preserve">
+    <value>Gateway</value>
+  </data>
+  <data name="OpenCodeGatewayRunning" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="OpenCodeGatewayStopped" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="OpenCodeGatewayPortInUse" xml:space="preserve">
+    <value>Port in use — another process is listening on the gateway port.</value>
+  </data>
+  <data name="OpenCodeGatewayStartFailed" xml:space="preserve">
+    <value>Gateway failed to start</value>
+  </data>
+  <data name="OpenCodeEndpoint" xml:space="preserve">
+    <value>Endpoint</value>
+  </data>
+  <data name="OpenCodeProfile" xml:space="preserve">
+    <value>Active profile</value>
+  </data>
+  <data name="OpenCodeProfileNone" xml:space="preserve">
+    <value>(no active profile)</value>
+  </data>
+  <data name="OpenCodeProxyStatus" xml:space="preserve">
+    <value>Proxy</value>
+  </data>
+  <data name="OpenCodeProxyUnavailable" xml:space="preserve">
+    <value>Unavailable</value>
+  </data>
+  <data name="OpenCodeProxyPort" xml:space="preserve">
+    <value>Available (SOCKS port {0})</value>
+  </data>
+  <data name="OpenCodeEgressIp" xml:space="preserve">
+    <value>Egress IP</value>
+  </data>
+  <data name="OpenCodeTestResult" xml:space="preserve">
+    <value>Last test</value>
+  </data>
+  <data name="OpenCodeTelemetry" xml:space="preserve">
+    <value>Telemetry</value>
+  </data>
+  <data name="OpenCodeClientExample" xml:space="preserve">
+    <value>Client example</value>
+  </data>
+  <data name="OpenCodeModelsEmpty" xml:space="preserve">
+    <value>No models available. Try Refresh models.</value>
+  </data>
+  <data name="OpenCodeSelectedModel" xml:space="preserve">
+    <value>Selected model</value>
+  </data>
+  <data name="OpenCodeModelFilter" xml:space="preserve">
+    <value>Filter models…</value>
+  </data>
+  <data name="OpenCodeFreeOnly" xml:space="preserve">
+    <value>Free only</value>
+  </data>
+  <data name="OpenCodeFilterAll" xml:space="preserve">
+    <value>All styles</value>
+  </data>
+  <data name="OpenCodeFilterChatCompletions" xml:space="preserve">
+    <value>Chat Completions</value>
+  </data>
+  <data name="OpenCodeFilterResponses" xml:space="preserve">
+    <value>Responses</value>
+  </data>
+  <data name="OpenCodeSortNameAsc" xml:space="preserve">
+    <value>Name A-Z</value>
+  </data>
+  <data name="OpenCodeSortNameDesc" xml:space="preserve">
+    <value>Name Z-A</value>
+  </data>
+  <data name="OpenCodeSortApiStyle" xml:space="preserve">
+    <value>API style</value>
+  </data>
+  <data name="OpenCodeSortFreeFirst" xml:space="preserve">
+    <value>Free first</value>
+  </data>
+  <data name="OpenCodeSortSource" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="OpenCodeFreeBadge" xml:space="preserve">
+    <value>Free</value>
+  </data>
+  <data name="OpenCodeColumnId" xml:space="preserve">
+    <value>ID</value>
+  </data>
+  <data name="OpenCodeColumnDisplayName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="OpenCodeColumnApiStyle" xml:space="preserve">
+    <value>API style</value>
+  </data>
+  <data name="OpenCodeColumnSource" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="OpenCodeColumnTools" xml:space="preserve">
+    <value>Tools</value>
+  </data>
+  <data name="OpenCodeColumnStreaming" xml:space="preserve">
+    <value>Stream</value>
+  </data>
+  <data name="OpenCodeModelCount" xml:space="preserve">
+    <value>Showing {0} of {1} models</value>
+  </data>
+  <data name="OpenCodeRefreshDone" xml:space="preserve">
+    <value>Models refreshed.</value>
+  </data>
+  <data name="OpenCodeRefreshFailed" xml:space="preserve">
+    <value>Model refresh failed. Built-in defaults remain available.</value>
+  </data>
+  <data name="OpenCodeSaved" xml:space="preserve">
+    <value>OpenCode settings saved.</value>
+  </data>
+  <data name="OpenCodeStateNotTested" xml:space="preserve">
+    <value>Not tested</value>
+  </data>
+  <data name="OpenCodeStateTesting" xml:space="preserve">
+    <value>Testing…</value>
+  </data>
+  <data name="OpenCodeStateAccepted" xml:space="preserve">
+    <value>OpenCode accepted</value>
+  </data>
+  <data name="OpenCodeStateRateLimited" xml:space="preserve">
+    <value>Rate limited</value>
+  </data>
+  <data name="OpenCodeStateFreeUsageLimit" xml:space="preserve">
+    <value>Free usage limit reached</value>
+  </data>
+  <data name="OpenCodeStateAuthenticationFailed" xml:space="preserve">
+    <value>Authentication failed (optional API key may be required upstream)</value>
+  </data>
+  <data name="OpenCodeStateAuthorizationFailed" xml:space="preserve">
+    <value>Not authorized</value>
+  </data>
+  <data name="OpenCodeStateModelNotFound" xml:space="preserve">
+    <value>Model not found</value>
+  </data>
+  <data name="OpenCodeStateProviderError" xml:space="preserve">
+    <value>Provider error</value>
+  </data>
+  <data name="OpenCodeStateNetworkError" xml:space="preserve">
+    <value>Network error</value>
+  </data>
+  <data name="OpenCodeStateTimeout" xml:space="preserve">
+    <value>Timeout</value>
+  </data>
+  <data name="OpenCodeStateClientRestricted" xml:space="preserve">
+    <value>No active v2rayN proxy route</value>
+  </data>
+  <data name="OpenCodeStateUnsupportedRequest" xml:space="preserve">
+    <value>Unsupported request</value>
+  </data>
+  <data name="OpenCodeStateUnknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="TbGlobalProxySettings" xml:space="preserve">
+    <value>Global Proxy (First Hop)</value>
+  </data>
+  <data name="TbGlobalProxyEnable" xml:space="preserve">
+    <value>Enable global proxy</value>
+  </data>
+  <data name="TbGlobalProxyType" xml:space="preserve">
+    <value>Proxy type</value>
+  </data>
+  <data name="TbGlobalProxyServer" xml:space="preserve">
+    <value>Server / Host</value>
+  </data>
+  <data name="TbGlobalProxyPort" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="TbGlobalProxyUser" xml:space="preserve">
+    <value>Username (optional)</value>
+  </data>
+  <data name="TbGlobalProxyPassword" xml:space="preserve">
+    <value>Password (optional)</value>
+  </data>
+  <data name="TbGlobalProxyTips" xml:space="preserve">
+    <value>When enabled, all app traffic and generated core configs use this proxy as the first hop. Loopback/local core API traffic is never proxied. Https proxy type requires sing-box. Tcping measures connect time via the proxy.</value>
+  </data>
+  <data name="MsgGlobalProxyInvalid" xml:space="preserve">
+    <value>Please fill a valid global proxy server and port</value>
+  </data>
+  <data name="MsgGlobalProxyHttpsXrayWarning" xml:space="preserve">
+    <value>Https global proxy is not supported by Xray; falling back to plain HTTP to the proxy</value>
+  </data>
+  <data name="menuTestOpenCode" xml:space="preserve">
+    <value>Test OpenCode</value>
+  </data>
+  <data name="LvTestOpenCode" xml:space="preserve">
+    <value>OpenCode Status</value>
+  </data>
+  <data name="OpenCodeColTesting" xml:space="preserve">
+    <value>Testing…</value>
+  </data>
+  <data name="OpenCodeColWorking" xml:space="preserve">
+    <value>Operational</value>
+  </data>
+  <data name="OpenCodeColForbidden" xml:space="preserve">
+    <value>Access denied</value>
+  </data>
+  <data name="OpenCodeColUnauthenticated" xml:space="preserve">
+    <value>Authentication failed</value>
+  </data>
+  <data name="OpenCodeColIpLimit" xml:space="preserve">
+    <value>IP limit reached</value>
+  </data>
+  <data name="OpenCodeColRateLimited" xml:space="preserve">
+    <value>Rate limit reached</value>
+  </data>
+  <data name="OpenCodeColConnectionFailed" xml:space="preserve">
+    <value>Connection failed</value>
+  </data>
+  <data name="OpenCodeColTimeout" xml:space="preserve">
+    <value>Request timed out</value>
+  </data>
+  <data name="OpenCodeColProviderError" xml:space="preserve">
+    <value>Provider error</value>
+  </data>
+  <data name="OpenCodeColModelNotFound" xml:space="preserve">
+    <value>Model not found</value>
+  </data>
+  <data name="OpenCodeColUnsupported" xml:space="preserve">
+    <value>Invalid request</value>
+  </data>
+  <data name="OpenCodeColNoProxy" xml:space="preserve">
+    <value>No proxy route</value>
+  </data>
+  <data name="OpenCodeColUnknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
 </root>

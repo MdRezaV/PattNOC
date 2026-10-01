@@ -1936,4 +1936,34 @@
   <data name="MsgEchOutboundTagConflict" xml:space="preserve">
     <value>EchOutbound 的 tag "{0}" 已被其他出站使用</value>
   </data>
+  <data name="TbGlobalProxySettings" xml:space="preserve">
+    <value>全域代理（第一跳）</value>
+  </data>
+  <data name="TbGlobalProxyEnable" xml:space="preserve">
+    <value>啟用全域代理</value>
+  </data>
+  <data name="TbGlobalProxyType" xml:space="preserve">
+    <value>代理類型</value>
+  </data>
+  <data name="TbGlobalProxyServer" xml:space="preserve">
+    <value>伺服器 / 主機</value>
+  </data>
+  <data name="TbGlobalProxyPort" xml:space="preserve">
+    <value>連接埠</value>
+  </data>
+  <data name="TbGlobalProxyUser" xml:space="preserve">
+    <value>使用者名稱（選填）</value>
+  </data>
+  <data name="TbGlobalProxyPassword" xml:space="preserve">
+    <value>密碼（選填）</value>
+  </data>
+  <data name="TbGlobalProxyTips" xml:space="preserve">
+    <value>啟用後，所有應用程式流量和產生的核心設定都透過此代理作為第一跳。回環／本地核心 API 流量永不走代理。Https 代理類型需要 sing-box。Tcping 透過代理測量連線時間。</value>
+  </data>
+  <data name="MsgGlobalProxyInvalid" xml:space="preserve">
+    <value>請填寫有效的全域代理伺服器和連接埠</value>
+  </data>
+  <data name="MsgGlobalProxyHttpsXrayWarning" xml:space="preserve">
+    <value>Xray 不支援 Https 全域代理，將回退為一般 HTTP 連接代理</value>
+  </data>
 </root>

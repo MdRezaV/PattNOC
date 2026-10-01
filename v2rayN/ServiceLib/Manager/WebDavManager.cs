@@ -51,6 +51,13 @@ public sealed class WebDavManager
                 BaseAddress = new Uri(baseUrl),
                 Credentials = new NetworkCredential(_config.WebDavItem.UserName, _config.WebDavItem.Password)
             };
+            // Route WebDAV backup through the global upstream proxy when enabled
+            var upstreamProxy = AppProxyResolver.Instance.GetUpstreamWebProxy();
+            if (upstreamProxy is not null)
+            {
+                clientParams.Proxy = upstreamProxy;
+                clientParams.UseProxy = true;
+            }
             _client = new WebDavClient(clientParams);
         }
         catch (Exception ex)

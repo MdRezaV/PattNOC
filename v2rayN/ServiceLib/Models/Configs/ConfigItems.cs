@@ -249,6 +249,24 @@ public class CheckUpdateItem
 }
 
 [Serializable]
+public class UpstreamProxyItem
+{
+    public bool Enabled { get; set; }
+    public EUpstreamProxyType ProxyType { get; set; } = EUpstreamProxyType.Socks5;
+    public string Server { get; set; } = string.Empty;
+    public int Port { get; set; }
+    public string? Username { get; set; }
+    public string? Password { get; set; }
+
+    public bool IsUsable()
+    {
+        return Enabled
+               && !Server.IsNullOrEmpty()
+               && Port is > 0 and < Global.MaxPort;
+    }
+}
+
+[Serializable]
 public class Fragment4RayItem
 {
     public string? Packets { get; set; }
@@ -300,4 +318,36 @@ public class HappyEyeballs4RayItem
     public bool? PrioritizeIPv6 { get; set; }
     public int? Interleave { get; set; }
     public int? MaxConcurrentTry { get; set; }
+}
+
+[Serializable]
+public class OpenCodeItem
+{
+    public bool Enabled { get; set; }
+    public bool GatewayEnabled { get; set; } = true;
+    public string DefaultTarget { get; set; } = "opencode-free";
+    public string DefaultModel { get; set; } = "big-pickle";
+    public string GatewayHost { get; set; } = "127.0.0.1";
+    public int GatewayPort { get; set; } = 10651;
+    public int ConnectTimeoutSeconds { get; set; } = 10;
+    public int RequestTimeoutSeconds { get; set; } = 120;
+    public int MaxRetry { get; set; } = 1;
+    public int MaxConcurrentRequests { get; set; } = 8;
+    public List<OpenCodeTargetItem> Targets { get; set; } = [];
+}
+
+[Serializable]
+public class OpenCodeTargetItem
+{
+    public string Id { get; set; } = "opencode-free";
+    public string Name { get; set; } = "OpenCode Free";
+    public string BaseUrl { get; set; } = "https://opencode.ai/zen/v1";
+    public string? CatalogUrl { get; set; }
+    public string? ApiKey { get; set; }
+    public bool KeyOptional { get; set; } = true;
+    public bool Enabled { get; set; } = true;
+    public string? DefaultApiStyle { get; set; }
+    public DateTime? LastCatalogRefresh { get; set; }
+    public string? LastTestState { get; set; }
+    public string? LastError { get; set; }
 }

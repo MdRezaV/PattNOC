@@ -36,8 +36,7 @@ public class CertPemManager
 
             using var cts = new CancellationTokenSource(Global.LocalFetch);
 
-            using var client = new TcpClient();
-            await client.ConnectAsync(domain, port > 0 ? port : 443, cts.Token);
+            using var client = await ConnectToServerAsync(domain, port > 0 ? port : 443, cts.Token);
 
             var callback = new RemoteCertificateValidationCallback((sender, certificate, chain, sslPolicyErrors) =>
                 ValidateServerCertificate(sender, certificate, chain, sslPolicyErrors, verifyPeerCertByName ?? []));
@@ -85,8 +84,7 @@ public class CertPemManager
 
             using var cts = new CancellationTokenSource(Global.LocalFetch);
 
-            using var client = new TcpClient();
-            await client.ConnectAsync(domain, port > 0 ? port : 443, cts.Token);
+            using var client = await ConnectToServerAsync(domain, port > 0 ? port : 443, cts.Token);
 
             var callback = new RemoteCertificateValidationCallback((sender, certificate, chain, sslPolicyErrors) =>
                 ValidateServerCertificate(sender, certificate, chain, sslPolicyErrors, verifyPeerCertByName ?? []));
@@ -122,6 +120,22 @@ public class CertPemManager
             Logging.SaveLog(_tag, ex);
             return (pemList, ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Connects to the cert server, routing through the global upstream proxy when enabled.
+    /// TLS remains end-to-end to the real server, so CA pinning stays valid.
+    /// </summary>
+    private async Task<TcpClient> ConnectToServerAsync(string domain, int port, CancellationToken ct)
+    {
+        var upstreamItem = _config?.UpstreamProxyItem;
+        if (upstreamItem is not null && upstreamItem.IsUsable())
+        {
+            return await UpstreamProxyTunnel.ConnectAsync(upstreamItem, domain, port, ct);
+        }
+        var client = new TcpClient();
+        await client.ConnectAsync(domain, port, ct);
+        return client;
     }
 
     /// <summary>

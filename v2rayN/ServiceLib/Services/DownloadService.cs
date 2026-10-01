@@ -340,84 +340,19 @@ public class DownloadService
     }
 
     /// <summary>
-    /// Creates local SOCKS proxy when proxy switch is enabled.
+    /// Resolves the proxy for app HTTP traffic: local core SOCKS when available,
+    /// otherwise the global upstream proxy when enabled, else direct.
     /// </summary>
-    private async Task<WebProxy?> GetWebProxy(bool blProxy, CancellationToken cancellationToken = default)
+    private async Task<IWebProxy?> GetWebProxy(bool blProxy, CancellationToken cancellationToken = default)
     {
-        if (!blProxy)
-        {
-            return null;
-        }
-        var port = AppManager.Instance.GetLocalPort(EInboundProtocol.socks);
-        if (await SocksPortCheck(Global.Loopback, port, cancellationToken) == false)
-        {
-            return null;
-        }
-
-        return new WebProxy($"socks5://{Global.Loopback}:{port}");
+        return await AppProxyResolver.Instance.ResolveAsync(blProxy, cancellationToken);
     }
 
     /// <summary>
     /// Checks whether the specified TCP endpoint is reachable.
     /// </summary>
-    private async Task<bool> SocksPortCheck(string ip, int port, CancellationToken cancellationToken = default)
+    private static Task<bool> SocksPortCheck(string ip, int port, CancellationToken cancellationToken = default)
     {
-        using var rootTimeOutCts = new CancellationTokenSource(Global.LocalFetch);
-        using var rootCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, rootTimeOutCts.Token);
-        var rootToken = rootCts.Token;
-
-        // SOCKS5 client greeting: VER=5, NMETHODS=1, METHOD=0x00 (no auth)
-        ReadOnlyMemory<byte> greeting = new byte[] { 0x05, 0x01, 0x00 };
-        var buf = new byte[2];
-
-        while (!rootToken.IsCancellationRequested)
-        {
-            using var tcp = new TcpClient();
-            using var attemptCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(rootToken, attemptCts.Token);
-            var linkedToken = linkedCts.Token;
-            try
-            {
-                await tcp.ConnectAsync(ip, port, linkedToken);
-                var stream = tcp.GetStream();
-
-                await stream.WriteAsync(greeting, linkedToken);
-
-                var read = await stream.ReadAsync(buf.AsMemory(0, 2), linkedToken);
-
-                // Server selection: VER=5, METHOD=0x00 — proxy is fully ready
-                if (read == 2 && buf[0] == 0x05)
-                {
-                    return true;
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                if (!rootToken.IsCancellationRequested)
-                {
-                    continue;
-                }
-                Logging.SaveLog($"SocksPortCheck Timeout waiting for proxy port {port} to be ready.");
-                return false;
-            }
-            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionRefused)
-            {
-                // Connection refused, proxy not ready yet, wait 50ms before retrying
-                try
-                {
-                    await Task.Delay(50, rootToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    Logging.SaveLog($"SocksPortCheck Timeout waiting for proxy port {port} to be ready.");
-                    return false;
-                }
-            }
-            catch
-            {
-                // Ignore other exceptions and continue
-            }
-        }
-        return false;
+        return AppLocalSocksProbe.IsAvailableAsync(port, cancellationToken);
     }
 }

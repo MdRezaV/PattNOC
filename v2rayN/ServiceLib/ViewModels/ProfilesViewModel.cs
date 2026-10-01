@@ -75,6 +75,8 @@ public partial class ProfilesViewModel : MyReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> SortServerResultCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> RemoveInvalidServerResultCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> FastRealPingCmd { get; }
+    public ReactiveCommand<RxVoid, RxVoid> OpenCodeTestCmd { get; }
+    public ReactiveCommand<RxVoid, RxVoid> OpenCodeTestSelectedCmd { get; }
 
     //servers export
     public ReactiveCommand<RxVoid, RxVoid> Export2ClientConfigCmd { get; }
@@ -173,6 +175,14 @@ public partial class ProfilesViewModel : MyReactiveObject
         FastRealPingCmd = ReactiveCommand.CreateFromTask(async () =>
         {
             await ServerSpeedtest(ESpeedActionType.FastRealping);
+        });
+        OpenCodeTestCmd = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await ServerSpeedtest(ESpeedActionType.OpenCodetest);
+        });
+        OpenCodeTestSelectedCmd = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await ServerSpeedtest(ESpeedActionType.OpenCodetest, true);
         });
         MixedTestServerCmd = ReactiveCommand.CreateFromTask(async () =>
         {
@@ -275,8 +285,9 @@ public partial class ProfilesViewModel : MyReactiveObject
     {
         if (result.IndexId.IsNullOrEmpty())
         {
-            NoticeManager.Instance.SendMessageEx(result.Delay);
-            NoticeManager.Instance.Enqueue(result.Delay);
+            var globalMsg = result.OpenCode.IsNotEmpty() ? result.OpenCode : result.Delay;
+            NoticeManager.Instance.SendMessageEx(globalMsg);
+            NoticeManager.Instance.Enqueue(globalMsg);
             return;
         }
         var item = ProfileItems.FirstOrDefault(it => it.IndexId == result.IndexId);
@@ -297,6 +308,10 @@ public partial class ProfilesViewModel : MyReactiveObject
         if (result.IpInfo.IsNotEmpty())
         {
             item.IpInfo = result.IpInfo ?? string.Empty;
+        }
+        if (result.OpenCode.IsNotEmpty())
+        {
+            item.OpenCodeVal = result.OpenCode ?? string.Empty;
         }
         await Task.CompletedTask;
     }
@@ -427,6 +442,7 @@ public partial class ProfilesViewModel : MyReactiveObject
                         DelayVal = t33?.Delay != 0 ? $"{t33?.Delay}" : string.Empty,
                         SpeedVal = t33?.Speed > 0 ? $"{t33?.Speed}" : t33?.Message ?? string.Empty,
                         IpInfo = t33?.IpInfo ?? string.Empty,
+                        OpenCodeVal = t33?.OpenCode ?? string.Empty,
                         TodayDown = t22 == null ? "" : Utils.HumanFy(t22.TodayDown),
                         TodayUp = t22 == null ? "" : Utils.HumanFy(t22.TodayUp),
                         TotalDown = t22 == null ? "" : Utils.HumanFy(t22.TotalDown),
@@ -702,10 +718,10 @@ public partial class ProfilesViewModel : MyReactiveObject
         }
     }
 
-    public async Task ServerSpeedtest(ESpeedActionType actionType)
+    public async Task ServerSpeedtest(ESpeedActionType actionType, bool selectedOnly = false)
     {
         List<ProfileItem>? lstSelected;
-        if (actionType is ESpeedActionType.Mixedtest or ESpeedActionType.FastRealping)
+        if (!selectedOnly && actionType is ESpeedActionType.Mixedtest or ESpeedActionType.FastRealping or ESpeedActionType.OpenCodetest)
         {
             if (actionType == ESpeedActionType.FastRealping)
             {

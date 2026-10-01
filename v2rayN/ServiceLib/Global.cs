@@ -55,6 +55,7 @@ public class Global
     public const string ProxyTag = "proxy";
     public const string DirectTag = "direct";
     public const string BlockTag = "block";
+    public const string UpstreamProxyTag = "app-upstream";
     public const string DnsOutboundTag = "dns";
     public const string DnsTag = "dns-module";
     public const string DirectDnsTag = "direct-dns";
@@ -92,7 +93,9 @@ public class Global
     public const string XrayLocalAsset = "XRAY_LOCATION_ASSET";
     public const string XrayLocalCert = "XRAY_LOCATION_CERT";
     public const int SpeedTestPageSize = 16;
-    public const int SpeedTestConcurrencyCountMin = 10;
+    public const int SpeedTestConcurrencyCountMin = 1;
+    public const int SpeedTestConcurrencyCountMax = 30;
+    public const int SpeedTestConcurrencyCountDefault = 10;
     public const string LinuxBash = "/bin/bash";
     public const string StringTrue = "true";
     public const string StringFalse = "false";
@@ -366,6 +369,13 @@ public class Global
     [
         "Xray",
         "sing_box"
+    ];
+
+    public static readonly List<string> GlobalProxyTypes =
+    [
+        nameof(EUpstreamProxyType.Socks5),
+        nameof(EUpstreamProxyType.Http),
+        nameof(EUpstreamProxyType.Https)
     ];
 
     public static readonly HashSet<EConfigType> XraySupportConfigType =

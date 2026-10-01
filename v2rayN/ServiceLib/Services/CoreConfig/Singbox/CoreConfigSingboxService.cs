@@ -60,7 +60,7 @@ public partial class CoreConfigSingboxService(CoreConfigContext context)
             ret.Msg = string.Format(ResUI.SuccessfulConfiguration, "");
             ret.Success = true;
 
-            ret.Data = ApplyFinalConfigModifiers();
+            ret.Data = ApplyGlobalFirstHopProxy(ApplyFinalConfigModifiers());
             return ret;
         }
         catch (Exception ex)
@@ -171,7 +171,8 @@ public partial class CoreConfigSingboxService(CoreConfigContext context)
             ApplyOutboundBindInterface();
             ApplyOutboundSendThrough();
             ret.Success = true;
-            ret.Data = ApplyCustomOutboundReplace();
+            // PattN: global first-hop proxy also applies to speedtest configs
+            ret.Data = ApplyGlobalFirstHopProxy(ApplyCustomOutboundReplace());
             return ret;
         }
         catch (Exception ex)
@@ -233,7 +234,8 @@ public partial class CoreConfigSingboxService(CoreConfigContext context)
 
             ret.Msg = string.Format(ResUI.SuccessfulConfiguration, "");
             ret.Success = true;
-            ret.Data = ApplyCustomOutboundReplace();
+            // PattN: global first-hop proxy also applies to single-server speedtest configs
+            ret.Data = ApplyGlobalFirstHopProxy(ApplyCustomOutboundReplace());
             return ret;
         }
         catch (Exception ex)

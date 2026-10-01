@@ -109,6 +109,19 @@ public sealed class AppManager
             await MigrateProfileExtra();
         }).Wait();
 
+        Task.Run(async () =>
+        {
+            try
+            {
+                OpenCodeManager.Instance.Init();
+                await OpenCodeManager.Instance.StartGatewayAsync();
+            }
+            catch (Exception ex)
+            {
+                Logging.SaveLog("OpenCode", ex);
+            }
+        });
+
         return true;
     }
 
@@ -132,6 +145,11 @@ public sealed class AppManager
             await ConfigHandler.SaveConfig(_config);
             await ProfileExManager.Instance.SaveTo();
             await StatisticsManager.Instance.SaveTo();
+            try
+            {
+                await OpenCodeManager.Instance.StopAsync(TimeSpan.FromSeconds(2));
+            }
+            catch { }
             await CoreManager.Instance.CoreStop();
             StatisticsManager.Instance.Close();
 

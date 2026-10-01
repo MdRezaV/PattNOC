@@ -5003,7 +5003,97 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("TbSetUpstreamProxyDetour", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   查找类似 Global Proxy (First Hop) 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxySettings {
+            get {
+                return ResourceManager.GetString("TbGlobalProxySettings", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Enable global proxy 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyEnable {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyEnable", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Proxy type 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyType {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyType", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Server / Host 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyServer {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyServer", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Port 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyPort {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyPort", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Username (optional) 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyUser {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyUser", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Password (optional) 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyPassword {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyPassword", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 When enabled, all app traffic and generated core configs use this proxy as the first hop. 的本地化字符串。
+        /// </summary>
+        public static string TbGlobalProxyTips {
+            get {
+                return ResourceManager.GetString("TbGlobalProxyTips", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Please fill a valid global proxy server and port 的本地化字符串。
+        /// </summary>
+        public static string MsgGlobalProxyInvalid {
+            get {
+                return ResourceManager.GetString("MsgGlobalProxyInvalid", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Https global proxy is not supported by Xray 的本地化字符串。
+        /// </summary>
+        public static string MsgGlobalProxyHttpsXrayWarning {
+            get {
+                return ResourceManager.GetString("MsgGlobalProxyHttpsXrayWarning", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   查找类似 Short Id 的本地化字符串。
         /// </summary>
@@ -5505,6 +5595,861 @@ namespace ServiceLib.Resx {
         public static string UpgradeAppNotExistTip {
             get {
                 return ResourceManager.GetString("UpgradeAppNotExistTip", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 OpenCode 的本地化字符串。
+        /// </summary>
+        public static string menuOpenCode {
+            get {
+                return ResourceManager.GetString("menuOpenCode", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 OpenCode Integration 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeTitle {
+            get {
+                return ResourceManager.GetString("OpenCodeTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Dashboard 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeTabDashboard {
+            get {
+                return ResourceManager.GetString("OpenCodeTabDashboard", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Models 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeTabModels {
+            get {
+                return ResourceManager.GetString("OpenCodeTabModels", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Gateway 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeTabGateway {
+            get {
+                return ResourceManager.GetString("OpenCodeTabGateway", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Settings 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeTabSettings {
+            get {
+                return ResourceManager.GetString("OpenCodeTabSettings", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Enable OpenCode 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeEnabled {
+            get {
+                return ResourceManager.GetString("OpenCodeEnabled", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Enable local gateway 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeGatewayEnabled {
+            get {
+                return ResourceManager.GetString("OpenCodeGatewayEnabled", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Default target 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeDefaultTarget {
+            get {
+                return ResourceManager.GetString("OpenCodeDefaultTarget", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Default model 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeDefaultModel {
+            get {
+                return ResourceManager.GetString("OpenCodeDefaultModel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Gateway host 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeGatewayHost {
+            get {
+                return ResourceManager.GetString("OpenCodeGatewayHost", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Gateway port 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeGatewayPort {
+            get {
+                return ResourceManager.GetString("OpenCodeGatewayPort", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Connect timeout (s) 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeConnectTimeout {
+            get {
+                return ResourceManager.GetString("OpenCodeConnectTimeout", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Request timeout (s) 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeRequestTimeout {
+            get {
+                return ResourceManager.GetString("OpenCodeRequestTimeout", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Max retry (transient only) 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeMaxRetry {
+            get {
+                return ResourceManager.GetString("OpenCodeMaxRetry", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Max concurrent requests 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeMaxConcurrent {
+            get {
+                return ResourceManager.GetString("OpenCodeMaxConcurrent", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Target name 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeTargetName {
+            get {
+                return ResourceManager.GetString("OpenCodeTargetName", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Base URL 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeTargetBaseUrl {
+            get {
+                return ResourceManager.GetString("OpenCodeTargetBaseUrl", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Catalog URL 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeTargetCatalogUrl {
+            get {
+                return ResourceManager.GetString("OpenCodeTargetCatalogUrl", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 API key (optional) 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeApiKey {
+            get {
+                return ResourceManager.GetString("OpenCodeApiKey", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 API key is optional for OpenCode Free. Leave empty to send no Authorization header. 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeApiKeyOptionalHint {
+            get {
+                return ResourceManager.GetString("OpenCodeApiKeyOptionalHint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 API key is set 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeApiKeySet {
+            get {
+                return ResourceManager.GetString("OpenCodeApiKeySet", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 No API key (keyless) 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeApiKeyNotSet {
+            get {
+                return ResourceManager.GetString("OpenCodeApiKeyNotSet", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Save API key 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeSaveApiKey {
+            get {
+                return ResourceManager.GetString("OpenCodeSaveApiKey", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Clear API key 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeClearApiKey {
+            get {
+                return ResourceManager.GetString("OpenCodeClearApiKey", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Refresh models 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeRefreshModels {
+            get {
+                return ResourceManager.GetString("OpenCodeRefreshModels", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Test connection 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeTestConnection {
+            get {
+                return ResourceManager.GetString("OpenCodeTestConnection", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Save 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeSave {
+            get {
+                return ResourceManager.GetString("OpenCodeSave", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Gateway 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeGatewayState {
+            get {
+                return ResourceManager.GetString("OpenCodeGatewayState", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Running 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeGatewayRunning {
+            get {
+                return ResourceManager.GetString("OpenCodeGatewayRunning", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Stopped 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeGatewayStopped {
+            get {
+                return ResourceManager.GetString("OpenCodeGatewayStopped", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Port in use — another process is listening on the gateway port. 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeGatewayPortInUse {
+            get {
+                return ResourceManager.GetString("OpenCodeGatewayPortInUse", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Gateway failed to start 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeGatewayStartFailed {
+            get {
+                return ResourceManager.GetString("OpenCodeGatewayStartFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Endpoint 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeEndpoint {
+            get {
+                return ResourceManager.GetString("OpenCodeEndpoint", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Active profile 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeProfile {
+            get {
+                return ResourceManager.GetString("OpenCodeProfile", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 (no active profile) 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeProfileNone {
+            get {
+                return ResourceManager.GetString("OpenCodeProfileNone", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Proxy 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeProxyStatus {
+            get {
+                return ResourceManager.GetString("OpenCodeProxyStatus", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Unavailable 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeProxyUnavailable {
+            get {
+                return ResourceManager.GetString("OpenCodeProxyUnavailable", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Available (SOCKS port {0}) 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeProxyPort {
+            get {
+                return ResourceManager.GetString("OpenCodeProxyPort", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Egress IP 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeEgressIp {
+            get {
+                return ResourceManager.GetString("OpenCodeEgressIp", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Last test 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeTestResult {
+            get {
+                return ResourceManager.GetString("OpenCodeTestResult", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Telemetry 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeTelemetry {
+            get {
+                return ResourceManager.GetString("OpenCodeTelemetry", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Client example 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeClientExample {
+            get {
+                return ResourceManager.GetString("OpenCodeClientExample", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 No models available. Try Refresh models. 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeModelsEmpty {
+            get {
+                return ResourceManager.GetString("OpenCodeModelsEmpty", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Selected model 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeSelectedModel {
+            get {
+                return ResourceManager.GetString("OpenCodeSelectedModel", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Filter models… 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeModelFilter {
+            get {
+                return ResourceManager.GetString("OpenCodeModelFilter", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Free only 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeFreeOnly {
+            get {
+                return ResourceManager.GetString("OpenCodeFreeOnly", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 All styles 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeFilterAll {
+            get {
+                return ResourceManager.GetString("OpenCodeFilterAll", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Chat Completions 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeFilterChatCompletions {
+            get {
+                return ResourceManager.GetString("OpenCodeFilterChatCompletions", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Responses 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeFilterResponses {
+            get {
+                return ResourceManager.GetString("OpenCodeFilterResponses", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Name A-Z 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeSortNameAsc {
+            get {
+                return ResourceManager.GetString("OpenCodeSortNameAsc", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Name Z-A 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeSortNameDesc {
+            get {
+                return ResourceManager.GetString("OpenCodeSortNameDesc", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 API style 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeSortApiStyle {
+            get {
+                return ResourceManager.GetString("OpenCodeSortApiStyle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Free first 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeSortFreeFirst {
+            get {
+                return ResourceManager.GetString("OpenCodeSortFreeFirst", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Source 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeSortSource {
+            get {
+                return ResourceManager.GetString("OpenCodeSortSource", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Free 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeFreeBadge {
+            get {
+                return ResourceManager.GetString("OpenCodeFreeBadge", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 ID 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColumnId {
+            get {
+                return ResourceManager.GetString("OpenCodeColumnId", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Name 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColumnDisplayName {
+            get {
+                return ResourceManager.GetString("OpenCodeColumnDisplayName", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 API style 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColumnApiStyle {
+            get {
+                return ResourceManager.GetString("OpenCodeColumnApiStyle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Source 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColumnSource {
+            get {
+                return ResourceManager.GetString("OpenCodeColumnSource", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Tools 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColumnTools {
+            get {
+                return ResourceManager.GetString("OpenCodeColumnTools", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Stream 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColumnStreaming {
+            get {
+                return ResourceManager.GetString("OpenCodeColumnStreaming", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Showing {0} of {1} models 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeModelCount {
+            get {
+                return ResourceManager.GetString("OpenCodeModelCount", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Models refreshed. 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeRefreshDone {
+            get {
+                return ResourceManager.GetString("OpenCodeRefreshDone", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Model refresh failed. Built-in defaults remain available. 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeRefreshFailed {
+            get {
+                return ResourceManager.GetString("OpenCodeRefreshFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 OpenCode settings saved. 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeSaved {
+            get {
+                return ResourceManager.GetString("OpenCodeSaved", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Not tested 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateNotTested {
+            get {
+                return ResourceManager.GetString("OpenCodeStateNotTested", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Testing… 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateTesting {
+            get {
+                return ResourceManager.GetString("OpenCodeStateTesting", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 OpenCode accepted 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateAccepted {
+            get {
+                return ResourceManager.GetString("OpenCodeStateAccepted", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Rate limited 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateRateLimited {
+            get {
+                return ResourceManager.GetString("OpenCodeStateRateLimited", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Free usage limit reached 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateFreeUsageLimit {
+            get {
+                return ResourceManager.GetString("OpenCodeStateFreeUsageLimit", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Authentication failed (optional API key may be required upstream) 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateAuthenticationFailed {
+            get {
+                return ResourceManager.GetString("OpenCodeStateAuthenticationFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Not authorized 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateAuthorizationFailed {
+            get {
+                return ResourceManager.GetString("OpenCodeStateAuthorizationFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Model not found 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateModelNotFound {
+            get {
+                return ResourceManager.GetString("OpenCodeStateModelNotFound", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Provider error 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateProviderError {
+            get {
+                return ResourceManager.GetString("OpenCodeStateProviderError", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Network error 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateNetworkError {
+            get {
+                return ResourceManager.GetString("OpenCodeStateNetworkError", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Timeout 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateTimeout {
+            get {
+                return ResourceManager.GetString("OpenCodeStateTimeout", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 No active v2rayN proxy route 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateClientRestricted {
+            get {
+                return ResourceManager.GetString("OpenCodeStateClientRestricted", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Unsupported request 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateUnsupportedRequest {
+            get {
+                return ResourceManager.GetString("OpenCodeStateUnsupportedRequest", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Unknown 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeStateUnknown {
+            get {
+                return ResourceManager.GetString("OpenCodeStateUnknown", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Test OpenCode 的本地化字符串。
+        /// </summary>
+        public static string menuTestOpenCode {
+            get {
+                return ResourceManager.GetString("menuTestOpenCode", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 OpenCode Status 的本地化字符串。
+        /// </summary>
+        public static string LvTestOpenCode {
+            get {
+                return ResourceManager.GetString("LvTestOpenCode", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Testing… 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColTesting {
+            get {
+                return ResourceManager.GetString("OpenCodeColTesting", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Operational 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColWorking {
+            get {
+                return ResourceManager.GetString("OpenCodeColWorking", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Access denied 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColForbidden {
+            get {
+                return ResourceManager.GetString("OpenCodeColForbidden", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Authentication failed 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColUnauthenticated {
+            get {
+                return ResourceManager.GetString("OpenCodeColUnauthenticated", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 IP limit reached 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColIpLimit {
+            get {
+                return ResourceManager.GetString("OpenCodeColIpLimit", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Rate limit reached 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColRateLimited {
+            get {
+                return ResourceManager.GetString("OpenCodeColRateLimited", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Connection failed 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColConnectionFailed {
+            get {
+                return ResourceManager.GetString("OpenCodeColConnectionFailed", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Request timed out 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColTimeout {
+            get {
+                return ResourceManager.GetString("OpenCodeColTimeout", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Provider error 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColProviderError {
+            get {
+                return ResourceManager.GetString("OpenCodeColProviderError", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Model not found 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColModelNotFound {
+            get {
+                return ResourceManager.GetString("OpenCodeColModelNotFound", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Invalid request 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColUnsupported {
+            get {
+                return ResourceManager.GetString("OpenCodeColUnsupported", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 No proxy route 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColNoProxy {
+            get {
+                return ResourceManager.GetString("OpenCodeColNoProxy", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Unknown 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColUnknown {
+            get {
+                return ResourceManager.GetString("OpenCodeColUnknown", resourceCulture);
             }
         }
     }

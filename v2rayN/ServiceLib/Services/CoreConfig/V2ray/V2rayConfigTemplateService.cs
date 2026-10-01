@@ -339,6 +339,14 @@ public partial class CoreConfigV2rayService
         return JsonUtils.Serialize(fullConfigTemplateNode);
     }
 
+    /// <summary>
+    /// PattN global first-hop proxy: injects the app-upstream outbound and detours
+    /// non-private proxy outbounds through it. Runs LAST, after ProxyDetour and ECH,
+    /// so existing dialerProxy values are preserved.
+    /// </summary>
+    private string ApplyGlobalFirstHopProxy(string coreConfigContent)
+        => UpstreamProxyConfigBuilder.ApplyXrayGlobalFirstHop(coreConfigContent, _config.UpstreamProxyItem);
+
     private void ApplyOutboundBindInterface()
     {
         var bindInterface = _config.CoreBasicItem.BindInterface?.TrimEx();

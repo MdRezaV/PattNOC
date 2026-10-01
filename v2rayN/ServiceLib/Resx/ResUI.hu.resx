@@ -1803,4 +1803,34 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   <data name="MsgEchOutboundTagConflict" xml:space="preserve">
     <value>Az EchOutbound "{0}" tag értékét már egy másik outbound használja</value>
   </data>
+  <data name="TbGlobalProxySettings" xml:space="preserve">
+    <value>Globális proxy (első ugrás)</value>
+  </data>
+  <data name="TbGlobalProxyEnable" xml:space="preserve">
+    <value>Globális proxy engedélyezése</value>
+  </data>
+  <data name="TbGlobalProxyType" xml:space="preserve">
+    <value>Proxy típus</value>
+  </data>
+  <data name="TbGlobalProxyServer" xml:space="preserve">
+    <value>Szerver / Gazdagép</value>
+  </data>
+  <data name="TbGlobalProxyPort" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="TbGlobalProxyUser" xml:space="preserve">
+    <value>Felhasználónév (opcionális)</value>
+  </data>
+  <data name="TbGlobalProxyPassword" xml:space="preserve">
+    <value>Jelszó (opcionális)</value>
+  </data>
+  <data name="TbGlobalProxyTips" xml:space="preserve">
+    <value>Ha engedélyezve van, minden alkalmazási forgalom és a generált core konfigurációk ezt a proxyt használják első ugrásként. A loopback / helyi core API forgalom soha nem kerül proxyzásra. A Https proxy típushoz sing-box szükséges. A Tcping a proxyn keresztül méri a csatlakozási időt.</value>
+  </data>
+  <data name="MsgGlobalProxyInvalid" xml:space="preserve">
+    <value>Kérjük, adjon meg érvényes globális proxyszerver-t és portot</value>
+  </data>
+  <data name="MsgGlobalProxyHttpsXrayWarning" xml:space="preserve">
+    <value>Az Xray nem támogatja a Https globális proxyt; sima HTTP-re vált vissza</value>
+  </data>
 </root>

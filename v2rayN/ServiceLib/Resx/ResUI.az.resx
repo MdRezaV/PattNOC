@@ -1935,4 +1935,34 @@ Təyin edildikdə sertifikat sabitlənəcək və "Təhlükəsiz olmayan əlaqəy
   <data name="MsgEchOutboundTagConflict" xml:space="preserve">
     <value>EchOutbound-un "{0}" tag-ı artıq başqa outbound tərəfindən istifadə olunur</value>
   </data>
+  <data name="TbGlobalProxySettings" xml:space="preserve">
+    <value>Qlobal Proksi (İlk Hop)</value>
+  </data>
+  <data name="TbGlobalProxyEnable" xml:space="preserve">
+    <value>Qlobal proksini aktivləşdir</value>
+  </data>
+  <data name="TbGlobalProxyType" xml:space="preserve">
+    <value>Proksi növü</value>
+  </data>
+  <data name="TbGlobalProxyServer" xml:space="preserve">
+    <value>Servis / Host</value>
+  </data>
+  <data name="TbGlobalProxyPort" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="TbGlobalProxyUser" xml:space="preserve">
+    <value>İstifadəçi adı (istəyə bağlı)</value>
+  </data>
+  <data name="TbGlobalProxyPassword" xml:space="preserve">
+    <value>Şifrə (istəyə bağlı)</value>
+  </data>
+  <data name="TbGlobalProxyTips" xml:space="preserve">
+    <value>Aktivləşdirildikdə bütün tətbiq trafiki və yaradılan nüvə konfiqurasiyaları bu proksi-dən ilk hop kimi istifadə edir. Loopback/yerli nüvə API trafiki heç vaxt proksiləşdirilmir. Https proksi növü sing-box tələb edir. Tcping proksi vasitəsilə qoşulma müddətini ölçür.</value>
+  </data>
+  <data name="MsgGlobalProxyInvalid" xml:space="preserve">
+    <value>Zəhmət olmasa düzgün qlobal proksi servis və port daxil edin</value>
+  </data>
+  <data name="MsgGlobalProxyHttpsXrayWarning" xml:space="preserve">
+    <value>Xray Https qlobal proksi-ni dəstəkləmir; düz HTTP-yə qayıdır</value>
+  </data>
 </root>

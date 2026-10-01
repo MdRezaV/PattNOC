@@ -88,6 +88,17 @@ public partial class OptionSettingViewModel : MyReactiveObject, ICloseable
 
     #endregion System proxy
 
+    #region Global proxy
+
+    [Reactive] public partial bool GlobalProxyEnabled { get; set; }
+    [Reactive] public partial string GlobalProxyType { get; set; }
+    [Reactive] public partial string GlobalProxyServer { get; set; }
+    [Reactive] public partial string GlobalProxyPort { get; set; }
+    [Reactive] public partial string GlobalProxyUser { get; set; }
+    [Reactive] public partial string GlobalProxyPassword { get; set; }
+
+    #endregion Global proxy
+
     #region Tun mode
 
     [Reactive] public partial bool TunAutoRoute { get; set; }
@@ -211,6 +222,18 @@ public partial class OptionSettingViewModel : MyReactiveObject, ICloseable
         CustomSystemProxyScriptPath = _config.SystemProxyItem.CustomSystemProxyScriptPath;
 
         #endregion System proxy
+
+        #region Global proxy
+
+        _config.UpstreamProxyItem ??= new UpstreamProxyItem();
+        GlobalProxyEnabled = _config.UpstreamProxyItem.Enabled;
+        GlobalProxyType = _config.UpstreamProxyItem.ProxyType.ToString();
+        GlobalProxyServer = _config.UpstreamProxyItem.Server ?? string.Empty;
+        GlobalProxyPort = _config.UpstreamProxyItem.Port > 0 ? _config.UpstreamProxyItem.Port.ToString() : string.Empty;
+        GlobalProxyUser = _config.UpstreamProxyItem.Username ?? string.Empty;
+        GlobalProxyPassword = _config.UpstreamProxyItem.Password ?? string.Empty;
+
+        #endregion Global proxy
 
         #region Tun mode
 
@@ -381,6 +404,47 @@ public partial class OptionSettingViewModel : MyReactiveObject, ICloseable
         _config.SystemProxyItem.SystemProxyAdvancedProtocol = SystemProxyAdvancedProtocol;
         _config.SystemProxyItem.CustomSystemProxyPacPath = CustomSystemProxyPacPath;
         _config.SystemProxyItem.CustomSystemProxyScriptPath = CustomSystemProxyScriptPath;
+
+        //global proxy
+        _config.UpstreamProxyItem ??= new UpstreamProxyItem();
+        var gp = _config.UpstreamProxyItem;
+        var gpOldEnabled = gp.Enabled;
+        var gpOldServer = gp.Server;
+        var gpOldPort = gp.Port;
+        gp.Enabled = GlobalProxyEnabled;
+        if (gp.Enabled)
+        {
+            if (GlobalProxyServer.IsNullOrEmpty() || !int.TryParse(GlobalProxyPort, out var gpPort)
+                || gpPort <= 0 || gpPort >= Global.MaxPort
+                || !Enum.TryParse<EUpstreamProxyType>(GlobalProxyType, out var gpType))
+            {
+                NoticeManager.Instance.Enqueue(ResUI.MsgGlobalProxyInvalid);
+                return;
+            }
+            gp.ProxyType = gpType;
+            gp.Server = GlobalProxyServer.TrimEx();
+            gp.Port = gpPort;
+            gp.Username = GlobalProxyUser.NullIfEmpty();
+            gp.Password = GlobalProxyPassword.NullIfEmpty();
+        }
+        else
+        {
+            // Keep values for convenience when re-enabled
+            if (Enum.TryParse<EUpstreamProxyType>(GlobalProxyType, out var gpTypeOff))
+            {
+                gp.ProxyType = gpTypeOff;
+            }
+            gp.Server = GlobalProxyServer.TrimEx();
+            if (int.TryParse(GlobalProxyPort, out var gpPortOff) && gpPortOff > 0 && gpPortOff < Global.MaxPort)
+            {
+                gp.Port = gpPortOff;
+            }
+            gp.Username = GlobalProxyUser.NullIfEmpty();
+            gp.Password = GlobalProxyPassword.NullIfEmpty();
+        }
+        needReboot = needReboot
+                      || gpOldEnabled != gp.Enabled
+                      || (gp.Enabled && (gpOldServer != gp.Server || gpOldPort != gp.Port));
 
         //tun mode
         _config.TunModeItem.AutoRoute = TunAutoRoute;

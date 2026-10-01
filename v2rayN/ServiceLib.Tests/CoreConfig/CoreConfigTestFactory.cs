@@ -289,4 +289,22 @@ internal static class CoreConfigTestFactory
         config.TunModeItem.EnableIPv6Address = enableIPv6Address;
         return config;
     }
+
+    public static Config CreateConfigWithGlobalProxy(ECoreType coreType,
+        EUpstreamProxyType proxyType = EUpstreamProxyType.Socks5,
+        string server = "127.0.0.1", int port = 1080,
+        string? username = null, string? password = null, bool enabled = true)
+    {
+        var config = CreateConfig(coreType);
+        config.UpstreamProxyItem = new UpstreamProxyItem
+        {
+            Enabled = enabled,
+            ProxyType = proxyType,
+            Server = server,
+            Port = port,
+            Username = username,
+            Password = password,
+        };
+        return config;
+    }
 }

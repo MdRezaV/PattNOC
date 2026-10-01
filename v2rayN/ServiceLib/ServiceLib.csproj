@@ -2,7 +2,17 @@
 
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
+		<!-- .NET 10 SDK cannot resolve prune-package data for Microsoft.AspNetCore.App; required for the gateway FrameworkReference. -->
+		<AllowMissingPrunePackageData>true</AllowMissingPrunePackageData>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="ServiceLib.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Downloader" />

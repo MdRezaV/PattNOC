@@ -62,6 +62,8 @@
                         <MenuItem x:Name="menuSubGroupUpdateViaProxy" Header="{x:Static resx:ResUI.menuSubGroupUpdateViaProxy}" />
                     </MenuItem>
 
+                    <MenuItem x:Name="menuOpenCode" Header="{x:Static resx:ResUI.menuOpenCode}" />
+
                     <MenuItem Header="{x:Static resx:ResUI.menuSetting}">
                         <MenuItem x:Name="menuOptionSetting" Header="{x:Static resx:ResUI.menuOptionSetting}" />
                         <MenuItem x:Name="menuRoutingSetting" Header="{x:Static resx:ResUI.menuRoutingSetting}" />

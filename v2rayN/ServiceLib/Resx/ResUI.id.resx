@@ -1827,4 +1827,34 @@ Tindakan "Ambil sertifikat" mungkin gagal jika sertifikat self-signed digunakan 
   <data name="MsgEchOutboundTagConflict" xml:space="preserve">
     <value>Tag "{0}" pada EchOutbound sudah digunakan oleh outbound lain</value>
   </data>
+  <data name="TbGlobalProxySettings" xml:space="preserve">
+    <value>Proksi Global (Hop Pertama)</value>
+  </data>
+  <data name="TbGlobalProxyEnable" xml:space="preserve">
+    <value>Aktifkan proksi global</value>
+  </data>
+  <data name="TbGlobalProxyType" xml:space="preserve">
+    <value>Jenis proksi</value>
+  </data>
+  <data name="TbGlobalProxyServer" xml:space="preserve">
+    <value>Server / Host</value>
+  </data>
+  <data name="TbGlobalProxyPort" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="TbGlobalProxyUser" xml:space="preserve">
+    <value>Nama pengguna (opsional)</value>
+  </data>
+  <data name="TbGlobalProxyPassword" xml:space="preserve">
+    <value>Kata sandi (opsional)</value>
+  </data>
+  <data name="TbGlobalProxyTips" xml:space="preserve">
+    <value>Saat diaktifkan, semua lalu lintas aplikasi dan konfigurasi inti yang dihasilkan menggunakan proksi ini sebagai hop pertama. Lalu lintas loopback / API inti lokal tidak pernah diproksikan. Jenis proksi Https membutuhkan sing-box. Tcping mengukur waktu koneksi melalui proksi.</value>
+  </data>
+  <data name="MsgGlobalProxyInvalid" xml:space="preserve">
+    <value>Mohon isi server dan port proksi global yang valid</value>
+  </data>
+  <data name="MsgGlobalProxyHttpsXrayWarning" xml:space="preserve">
+    <value>Xray tidak mendukung proksi global Https; kembali ke HTTP biasa ke proksi</value>
+  </data>
 </root>

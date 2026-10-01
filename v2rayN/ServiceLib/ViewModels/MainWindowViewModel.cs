@@ -48,6 +48,9 @@ public partial class MainWindowViewModel : MyReactiveObject
     public ReactiveCommand<RxVoid, RxVoid> SubGroupUpdateCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> SubGroupUpdateViaProxyCmd { get; }
 
+    //OpenCode
+    public ReactiveCommand<RxVoid, RxVoid> OpenCodeCmd { get; }
+
     //Setting
     public ReactiveCommand<RxVoid, RxVoid> OptionSettingCmd { get; }
 
@@ -191,6 +194,13 @@ public partial class MainWindowViewModel : MyReactiveObject
         SubGroupUpdateViaProxyCmd = ReactiveCommand.CreateFromTask(async () =>
         {
             await UpdateSubscriptionProcess(_config.SubIndexId, true);
+        });
+
+        //OpenCode
+        OpenCodeCmd = ReactiveCommand.CreateFromTask(async () =>
+        {
+            var openCodeViewModel = new OpenCodeViewModel();
+            await AppManager.Instance.WindowDialog.ShowDialogAsync(openCodeViewModel);
         });
 
         //Setting
