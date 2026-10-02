@@ -62,6 +62,7 @@ public sealed record NormalizedCompletionRequest
     public double? Temperature { get; init; }
     public double? TopP { get; init; }
     public int? MaxTokens { get; init; }
+    public List<string>? Stop { get; init; }
     public bool Stream { get; init; }
     public string? ResponseFormatType { get; init; }
     public JsonElement? ResponseFormatSchema { get; init; }

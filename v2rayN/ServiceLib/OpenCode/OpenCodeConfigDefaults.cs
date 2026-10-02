@@ -19,20 +19,6 @@ public static class TargetCatalogDefaults
             Enabled = true,
         },
     ];
-
-    // Free-priced OpenCode Zen models. ApiStyle is per-model metadata (Chat Completions for these).
-    public static List<OpenCodeModel> CreateFreeModels() =>
-    [
-        new("big-pickle", "Big Pickle", EOpenCodeApiStyle.ChatCompletions, null, true, true, true, false, "default", true),
-        new("mimo-v2.5-free", "MiMo V2.5 Free", EOpenCodeApiStyle.ChatCompletions, null, true, true, true, false, "default", true),
-        new("mimo-v2.6-flash-free", "MiMo V2.6 Flash Free", EOpenCodeApiStyle.ChatCompletions, null, true, true, true, false, "default", true),
-        new("space-bunny-free", "Space Bunny Free", EOpenCodeApiStyle.ChatCompletions, null, true, true, true, false, "default", true),
-        new("longcat-2.5-preview-free", "LongCat 2.5 Preview Free", EOpenCodeApiStyle.ChatCompletions, null, true, true, true, false, "default", true),
-        new("ling-3.0-flash-fin-free", "Ling 3.0 Flash Fin Free", EOpenCodeApiStyle.ChatCompletions, null, true, true, true, false, "default", true),
-        new("nemotron-3-ultra-free", "Nemotron 3 Ultra Free", EOpenCodeApiStyle.ChatCompletions, null, true, true, true, false, "default", true),
-        new("nemotron-3.5-lightning-free", "Nemotron 3.5 Lightning Free", EOpenCodeApiStyle.ChatCompletions, null, true, true, true, false, "default", true),
-        new("muse-spark-1.3-contributor-free", "Muse Spark 1.3 Contributor Free", EOpenCodeApiStyle.Responses, null, true, true, true, false, "default", true),
-    ];
 }
 
 public static class OpenCodeConfigDefaults
@@ -46,7 +32,7 @@ public static class OpenCodeConfigDefaults
         Enabled = false,
         GatewayEnabled = true,
         DefaultTarget = TargetCatalogDefaults.OpenCodeFreeTargetId,
-        DefaultModel = "big-pickle",
+        DefaultModel = "",
         GatewayHost = Global.Loopback,
         GatewayPort = DefaultGatewayPort,
         ConnectTimeoutSeconds = 10,
@@ -77,7 +63,7 @@ public static class OpenCodeConfigDefaults
 
         if (item.DefaultModel.IsNullOrEmpty())
         {
-            item.DefaultModel = "big-pickle";
+            item.DefaultModel = "";
         }
 
         if (item.GatewayHost.IsNullOrEmpty())

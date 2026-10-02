@@ -105,8 +105,7 @@
                             Margin="{StaticResource MarginLeftRight8}"
                             DockPanel.Dock="Left"
                             VerticalAlignment="Center"
-                            Content="{x:Static resx:ResUI.OpenCodeFreeOnly}"
-                            IsChecked="{Binding FilterFreeOnly, Mode=TwoWay}" />
+                            Content="{x:Static resx:ResUI.OpenCodeFreeOnly}" />
                         <ComboBox
                             x:Name="cboApiStyleFilter"
                             Width="140"

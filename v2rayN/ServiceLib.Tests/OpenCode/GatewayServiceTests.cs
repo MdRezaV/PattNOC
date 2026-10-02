@@ -120,6 +120,25 @@ public class GatewayServiceTests
         ],
     };
 
+    private static string CreatePopulatedCache()
+    {
+        var cachePath = Path.Combine(Path.GetTempPath(), $"oc_gw_{Guid.NewGuid():N}.json");
+        var cache = new OpenCodeCatalogCache
+        {
+            UpdatedAt = DateTime.UtcNow,
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("big-pickle", "Big Pickle", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote", IsFree: true),
+                ],
+            },
+        };
+        File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+        return cachePath;
+    }
+
     private static string ChatOkBody() => """
         {
           "id": "chatcmpl-1",
@@ -189,7 +208,8 @@ public class GatewayServiceTests
         using var upstream = new MockUpstream(ctx => WriteJsonAsync(ctx, 200, """{"data":[{"id":"big-pickle"}]}"""));
         var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
         var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
-        var (gateway, _, client) = CreateGateway(settings, provider);
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
 
         try
         {
@@ -206,6 +226,7 @@ public class GatewayServiceTests
         {
             await gateway.StopAsync(TimeSpan.FromSeconds(2));
             client.Dispose();
+            try { File.Delete(cachePath); } catch { }
         }
     }
 
@@ -220,7 +241,7 @@ public class GatewayServiceTests
                 ["opencode-free"] =
                 [
                     new OpenCodeModel("big-pickle", "Big Pickle", EOpenCodeApiStyle.ChatCompletions,
-                        null, true, true, true, false, "default", IsFree: true),
+                        null, true, true, true, false, "remote", IsFree: true),
                     new OpenCodeModel("remote-paid", "Remote Paid", EOpenCodeApiStyle.ChatCompletions,
                         null, true, true, true, false, "remote", IsFree: false),
                 ],
@@ -249,6 +270,62 @@ public class GatewayServiceTests
 
             var paidModel = await client.GetAsync("/v1/models/remote-paid");
             await paidModel.StatusCode.Should().BeEqualTo(HttpStatusCode.NotFound);
+        }
+        finally
+        {
+            await gateway.StopAsync(TimeSpan.FromSeconds(2));
+            client.Dispose();
+            try { File.Delete(cachePath); } catch { }
+        }
+    }
+
+    [Test]
+    public async Task Gateway_ChatCompletions_FreeOnly_RejectsNonFreeModel()
+    {
+        var cachePath = Path.Combine(Path.GetTempPath(), $"oc_gw_freeonly_cx_{Guid.NewGuid():N}.json");
+        var cache = new OpenCodeCatalogCache
+        {
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("big-pickle", "Big Pickle", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote", IsFree: true),
+                    new OpenCodeModel("remote-paid", "Remote Paid", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote", IsFree: false),
+                ],
+            },
+        };
+        File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+
+        var upstreamCalls = 0;
+        using var upstream = new MockUpstream(async ctx =>
+        {
+            Interlocked.Increment(ref upstreamCalls);
+            await WriteJsonAsync(ctx, 200, ChatOkBody());
+        });
+        var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
+        settings.FreeOnly = true;
+        var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
+
+        try
+        {
+            client.BaseAddress = await StartGatewayAsync(gateway);
+
+            var paid = await client.PostAsync("/v1/chat/completions",
+                new StringContent(ChatBody("remote-paid"), Encoding.UTF8, "application/json"));
+            await paid.StatusCode.Should().BeEqualTo(HttpStatusCode.NotFound);
+            var paidBody = await paid.Content.ReadAsStringAsync();
+            await paidBody.Should().Contain("model_not_found");
+
+            var free = await client.PostAsync("/v1/chat/completions",
+                new StringContent(ChatBody("big-pickle"), Encoding.UTF8, "application/json"));
+            await free.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
+            var freeBody = await free.Content.ReadAsStringAsync();
+            await freeBody.Should().Contain("OK");
+
+            await upstreamCalls.Should().BeEqualTo(1);
         }
         finally
         {
@@ -289,13 +366,14 @@ public class GatewayServiceTests
         using var upstream = new MockUpstream(ctx => WriteJsonAsync(ctx, 200, """{"data":[{"id":"big-pickle"}]}"""));
         var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
         var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
-        var (gateway, _, client) = CreateGateway(settings, provider);
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
 
         try
         {
             client.BaseAddress = await StartGatewayAsync(gateway);
 
-            var resp = await client.GetAsync("/v1/claude/models");
+            var resp = await client.GetAsync("/claude/v1/models");
             await resp.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
             var body = await resp.Content.ReadAsStringAsync();
             await body.Should().Contain("claude-big-pickle");
@@ -304,6 +382,7 @@ public class GatewayServiceTests
         {
             await gateway.StopAsync(TimeSpan.FromSeconds(2));
             client.Dispose();
+            try { File.Delete(cachePath); } catch { }
         }
     }
 
@@ -313,24 +392,26 @@ public class GatewayServiceTests
         using var upstream = new MockUpstream(_ => Task.CompletedTask);
         var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
         var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
-        var (gateway, _, client) = CreateGateway(settings, provider);
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
 
         try
         {
             client.BaseAddress = await StartGatewayAsync(gateway);
 
-            var resp = await client.GetAsync("/v1/claude/models/claude-big-pickle");
+            var resp = await client.GetAsync("/claude/v1/models/claude-big-pickle");
             await resp.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
             var body = await resp.Content.ReadAsStringAsync();
             await body.Should().Contain("\"id\":\"claude-big-pickle\"");
 
-            var missing = await client.GetAsync("/v1/claude/models/claude-does-not-exist");
+            var missing = await client.GetAsync("/claude/v1/models/claude-does-not-exist");
             await missing.StatusCode.Should().BeEqualTo(HttpStatusCode.NotFound);
         }
         finally
         {
             await gateway.StopAsync(TimeSpan.FromSeconds(2));
             client.Dispose();
+            try { File.Delete(cachePath); } catch { }
         }
     }
 
@@ -356,13 +437,14 @@ public class GatewayServiceTests
         });
         var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
         var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
-        var (gateway, _, client) = CreateGateway(settings, provider);
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
 
         try
         {
             client.BaseAddress = await StartGatewayAsync(gateway);
 
-            var resp = await client.PostAsync("/v1/claude/chat/completions",
+            var resp = await client.PostAsync("/claude/v1/chat/completions",
                 new StringContent(ChatBody("claude-big-pickle"), Encoding.UTF8, "application/json"));
 
             await resp.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
@@ -375,6 +457,287 @@ public class GatewayServiceTests
         {
             await gateway.StopAsync(TimeSpan.FromSeconds(2));
             client.Dispose();
+            try { File.Delete(cachePath); } catch { }
+        }
+    }
+
+    private static string AnthropicBody(string model, bool stream = false, bool withTools = false) =>
+        JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["model"] = model,
+            ["max_tokens"] = 256,
+            ["stream"] = stream,
+            ["system"] = "You are helpful.",
+            ["messages"] = new List<object?>
+            {
+                new Dictionary<string, object?> { ["role"] = "user", ["content"] = "Reply with OK." },
+            },
+            ["tools"] = withTools
+                ? new List<object?>
+                {
+                    new Dictionary<string, object?>
+                    {
+                        ["name"] = "get_weather",
+                        ["description"] = "Get weather",
+                        ["input_schema"] = new Dictionary<string, object?> { ["type"] = "object" },
+                    },
+                }
+                : null,
+        });
+
+    [Test]
+    public async Task Gateway_Messages_ClaudeAlias_StripsPrefix_AnthropicFormat()
+    {
+        string? upstreamModel = null;
+        string? upstreamBody = null;
+        using var upstream = new MockUpstream(async ctx =>
+        {
+            using var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8);
+            var reqBody = await reader.ReadToEndAsync();
+            upstreamBody = reqBody;
+            try
+            {
+                using var doc = JsonDocument.Parse(reqBody);
+                upstreamModel = doc.RootElement.GetProperty("model").GetString();
+            }
+            catch
+            {
+                // Best-effort capture; failure surfaces via assertions below.
+            }
+
+            await WriteJsonAsync(ctx, 200, ChatOkBody());
+        });
+        var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
+        var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
+
+        try
+        {
+            client.BaseAddress = await StartGatewayAsync(gateway);
+
+            var resp = await client.PostAsync("/claude/v1/messages",
+                new StringContent(AnthropicBody("claude-big-pickle", withTools: true), Encoding.UTF8, "application/json"));
+
+            await resp.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
+            await upstreamModel.Should().BeEqualTo("big-pickle");
+            // Anthropic request converted to OpenAI wire: system message + function.parameters from input_schema.
+            await upstreamBody.Should().NotBeNull();
+            await upstreamBody!.Should().Contain("\"role\":\"system\"");
+            await upstreamBody.Should().Contain("\"parameters\"");
+            await upstreamBody.Should().Contain("get_weather");
+
+            var body = await resp.Content.ReadAsStringAsync();
+            await body.Should().Contain("\"type\":\"message\"");
+            await body.Should().Contain("\"model\":\"claude-big-pickle\"");
+            await body.Should().Contain("\"stop_reason\":\"end_turn\"");
+            await body.Should().Contain("\"input_tokens\":3");
+        }
+        finally
+        {
+            await gateway.StopAsync(TimeSpan.FromSeconds(2));
+            client.Dispose();
+        }
+    }
+
+    [Test]
+    public async Task Gateway_Messages_NonAlias_AcceptsClaudePrefixedModel()
+    {
+        string? upstreamModel = null;
+        using var upstream = new MockUpstream(async ctx =>
+        {
+            using var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8);
+            var reqBody = await reader.ReadToEndAsync();
+            try
+            {
+                using var doc = JsonDocument.Parse(reqBody);
+                upstreamModel = doc.RootElement.GetProperty("model").GetString();
+            }
+            catch
+            {
+            }
+
+            await WriteJsonAsync(ctx, 200, ChatOkBody());
+        });
+        var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
+        var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
+
+        try
+        {
+            client.BaseAddress = await StartGatewayAsync(gateway);
+
+            // Even the non-alias /v1/messages route resolves claude- prefixed ids.
+            var resp = await client.PostAsync("/v1/messages",
+                new StringContent(AnthropicBody("claude-big-pickle"), Encoding.UTF8, "application/json"));
+
+            await resp.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
+            await upstreamModel.Should().BeEqualTo("big-pickle");
+            var body = await resp.Content.ReadAsStringAsync();
+            await body.Should().Contain("\"type\":\"message\"");
+        }
+        finally
+        {
+            await gateway.StopAsync(TimeSpan.FromSeconds(2));
+            client.Dispose();
+            try { File.Delete(cachePath); } catch { }
+        }
+    }
+
+    [Test]
+    public async Task Gateway_Messages_ClaudeAlias_Stream_EmitsAnthropicEvents()
+    {
+        var sse = string.Join("\n",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"He\"}}]}",
+            "",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"llo\"}}]}",
+            "",
+            "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}",
+            "",
+            "data: [DONE]",
+            "");
+        using var upstream = new MockUpstream(ctx => WriteSseAsync(ctx, sse));
+        var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
+        var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
+
+        try
+        {
+            client.BaseAddress = await StartGatewayAsync(gateway);
+
+            var resp = await client.PostAsync("/claude/v1/messages",
+                new StringContent(AnthropicBody("claude-big-pickle", stream: true), Encoding.UTF8, "application/json"));
+
+            await resp.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
+            await resp.Content.Headers.ContentType!.MediaType.Should().BeEqualTo("text/event-stream");
+            var body = await resp.Content.ReadAsStringAsync();
+            await body.Should().Contain("event: message_start");
+            await body.Should().Contain("event: content_block_start");
+            await body.Should().Contain("event: content_block_delta");
+            await body.Should().Contain("event: content_block_stop");
+            await body.Should().Contain("event: message_delta");
+            await body.Should().Contain("event: message_stop");
+            await body.Should().Contain("\"type\":\"text_delta\"");
+            await body.Should().Contain("He");
+            await body.Should().Contain("llo");
+            await body.Should().Contain("\"model\":\"claude-big-pickle\"");
+        }
+        finally
+        {
+            await gateway.StopAsync(TimeSpan.FromSeconds(2));
+            client.Dispose();
+            try { File.Delete(cachePath); } catch { }
+        }
+    }
+
+    [Test]
+    public async Task Gateway_Messages_ToolUse_ReturnsAnthropicToolUseBlock()
+    {
+        var payload = """
+            {
+              "choices": [
+                {
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": { "name": "get_weather", "arguments": "{\"city\":\"Tehran\"}" }
+                      }
+                    ]
+                  },
+                  "finish_reason": "tool_calls"
+                }
+              ],
+              "usage": { "prompt_tokens": 3, "completion_tokens": 1 }
+            }
+            """;
+        using var upstream = new MockUpstream(ctx => WriteJsonAsync(ctx, 200, payload));
+        var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
+        var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
+
+        try
+        {
+            client.BaseAddress = await StartGatewayAsync(gateway);
+
+            var resp = await client.PostAsync("/claude/v1/messages",
+                new StringContent(AnthropicBody("claude-big-pickle", withTools: true), Encoding.UTF8, "application/json"));
+
+            await resp.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
+            var body = await resp.Content.ReadAsStringAsync();
+            await body.Should().Contain("\"type\":\"tool_use\"");
+            await body.Should().Contain("\"name\":\"get_weather\"");
+            await body.Should().Contain("Tehran");
+            await body.Should().Contain("\"stop_reason\":\"tool_use\"");
+        }
+        finally
+        {
+            await gateway.StopAsync(TimeSpan.FromSeconds(2));
+            client.Dispose();
+            try { File.Delete(cachePath); } catch { }
+        }
+    }
+
+    [Test]
+    public async Task Gateway_Messages_FreeOnly_RejectsNonFree_AnthropicErrorShape()
+    {
+        var cachePath = Path.Combine(Path.GetTempPath(), $"oc_gw_freeonly_msg_{Guid.NewGuid():N}.json");
+        var cache = new OpenCodeCatalogCache
+        {
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("big-pickle", "Big Pickle", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote", IsFree: true),
+                    new OpenCodeModel("remote-paid", "Remote Paid", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote", IsFree: false),
+                ],
+            },
+        };
+        File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+
+        var upstreamCalls = 0;
+        using var upstream = new MockUpstream(async ctx =>
+        {
+            Interlocked.Increment(ref upstreamCalls);
+            await WriteJsonAsync(ctx, 200, ChatOkBody());
+        });
+        var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
+        settings.FreeOnly = true;
+        var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
+
+        try
+        {
+            client.BaseAddress = await StartGatewayAsync(gateway);
+
+            var paid = await client.PostAsync("/claude/v1/messages",
+                new StringContent(AnthropicBody("claude-remote-paid"), Encoding.UTF8, "application/json"));
+            await paid.StatusCode.Should().BeEqualTo(HttpStatusCode.NotFound);
+            var paidBody = await paid.Content.ReadAsStringAsync();
+            await paidBody.Should().Contain("\"type\":\"error\"");
+            await paidBody.Should().Contain("model_not_found");
+
+            var free = await client.PostAsync("/claude/v1/messages",
+                new StringContent(AnthropicBody("claude-big-pickle"), Encoding.UTF8, "application/json"));
+            await free.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
+            var freeBody = await free.Content.ReadAsStringAsync();
+            await freeBody.Should().Contain("\"type\":\"message\"");
+
+            await upstreamCalls.Should().BeEqualTo(1);
+        }
+        finally
+        {
+            await gateway.StopAsync(TimeSpan.FromSeconds(2));
+            client.Dispose();
+            try { File.Delete(cachePath); } catch { }
         }
     }
 
@@ -384,7 +747,8 @@ public class GatewayServiceTests
         using var upstream = new MockUpstream(ctx => WriteJsonAsync(ctx, 200, ChatOkBody()));
         var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
         var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
-        var (gateway, _, client) = CreateGateway(settings, provider);
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
 
         try
         {
@@ -404,6 +768,7 @@ public class GatewayServiceTests
         {
             await gateway.StopAsync(TimeSpan.FromSeconds(2));
             client.Dispose();
+            try { File.Delete(cachePath); } catch { }
         }
     }
 
@@ -422,7 +787,8 @@ public class GatewayServiceTests
         using var upstream = new MockUpstream(ctx => WriteSseAsync(ctx, sse));
         var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
         var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
-        var (gateway, _, client) = CreateGateway(settings, provider);
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
 
         try
         {
@@ -444,6 +810,7 @@ public class GatewayServiceTests
         {
             await gateway.StopAsync(TimeSpan.FromSeconds(2));
             client.Dispose();
+            try { File.Delete(cachePath); } catch { }
         }
     }
 
@@ -473,7 +840,8 @@ public class GatewayServiceTests
         using var upstream = new MockUpstream(ctx => WriteJsonAsync(ctx, 200, payload));
         var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
         var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
-        var (gateway, _, client) = CreateGateway(settings, provider);
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
 
         try
         {
@@ -492,6 +860,7 @@ public class GatewayServiceTests
         {
             await gateway.StopAsync(TimeSpan.FromSeconds(2));
             client.Dispose();
+            try { File.Delete(cachePath); } catch { }
         }
     }
 
@@ -582,7 +951,8 @@ public class GatewayServiceTests
         });
         var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1", maxRetry: 3);
         var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
-        var (gateway, _, client) = CreateGateway(settings, provider);
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
 
         try
         {
@@ -603,6 +973,7 @@ public class GatewayServiceTests
         {
             await gateway.StopAsync(TimeSpan.FromSeconds(2));
             client.Dispose();
+            try { File.Delete(cachePath); } catch { }
         }
     }
 
@@ -612,7 +983,8 @@ public class GatewayServiceTests
         using var upstream = new MockUpstream(ctx => WriteJsonAsync(ctx, 200, ChatOkBody()));
         var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
         var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
-        var (gatewayA, _, clientA) = CreateGateway(settings, provider);
+        var cachePath = CreatePopulatedCache();
+        var (gatewayA, _, clientA) = CreateGateway(settings, provider, cachePath);
 
         try
         {
@@ -694,7 +1066,8 @@ public class GatewayServiceTests
         });
         var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
         var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
-        var (gateway, _, client) = CreateGateway(settings, provider);
+        var cachePath = CreatePopulatedCache();
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
 
         try
         {
@@ -729,6 +1102,7 @@ public class GatewayServiceTests
         {
             await gateway.StopAsync(TimeSpan.FromSeconds(2));
             client.Dispose();
+            try { File.Delete(cachePath); } catch { }
         }
     }
 

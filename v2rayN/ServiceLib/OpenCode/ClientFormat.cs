@@ -8,6 +8,9 @@ public static class ClientFormat
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
+    // Boxed JsonElement null survives WhenWritingNull so explicit "content": null is emitted.
+    private static readonly JsonElement JsonNull = JsonSerializer.SerializeToElement<object?>(null);
+
     public static NormalizedCompletionRequest? ParseChatRequest(string body)
     {
         try
@@ -29,6 +32,7 @@ public static class ClientFormat
                 TopP = root.TryGetProperty("top_p", out var tp) && tp.TryGetDouble(out var tpv) ? tpv : null,
                 MaxTokens = root.TryGetProperty("max_tokens", out var mt)
                     && mt.TryGetInt32(out var mtv) ? mtv : null,
+                Stop = ParseStop(root),
                 User = root.TryGetProperty("user", out var user) ? user.GetString() : null,
             };
 
@@ -42,16 +46,19 @@ public static class ClientFormat
                 req = req with { Tools = ParseTools(tools) };
             }
 
-            if (root.TryGetProperty("tool_choice", out var tc) && tc.ValueKind == JsonValueKind.String)
+            if (root.TryGetProperty("tool_choice", out var tc))
             {
-                req = req with { ToolChoice = tc.GetString() };
-            }
-            else if (root.TryGetProperty("tool_choice", out var tcObj)
-                && tcObj.ValueKind == JsonValueKind.Object
-                && tcObj.TryGetProperty("type", out var tcType)
-                && tcType.ValueKind == JsonValueKind.String)
-            {
-                req = req with { ToolChoice = tcType.GetString() };
+                var choice = tc.ValueKind switch
+                {
+                    JsonValueKind.String => tc.GetString(),
+                    JsonValueKind.Object when tc.TryGetProperty("type", out var tcType)
+                        && tcType.ValueKind == JsonValueKind.String => ResolveToolChoiceObject(tc, tcType.GetString()),
+                    _ => null,
+                };
+                if (choice.IsNotEmpty())
+                {
+                    req = req with { ToolChoice = choice };
+                }
             }
 
             if (root.TryGetProperty("response_format", out var rf) && rf.ValueKind == JsonValueKind.Object)
@@ -256,6 +263,319 @@ public static class ClientFormat
         }
     }
 
+    public static NormalizedCompletionRequest? ParseAnthropicRequest(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            var req = new NormalizedCompletionRequest
+            {
+                Model = root.TryGetProperty("model", out var model) ? model.GetString() ?? "" : "",
+                Stream = root.TryGetProperty("stream", out var stream)
+                    && stream.ValueKind == JsonValueKind.True,
+                Temperature = root.TryGetProperty("temperature", out var temp)
+                    && temp.TryGetDouble(out var tv) ? tv : null,
+                TopP = root.TryGetProperty("top_p", out var tp) && tp.TryGetDouble(out var tpv) ? tpv : null,
+                MaxTokens = root.TryGetProperty("max_tokens", out var mt)
+                    && mt.TryGetInt32(out var mtv) ? mtv : null,
+                Stop = ParseStop(root),
+            };
+
+            if (root.TryGetProperty("metadata", out var meta)
+                && meta.TryGetProperty("user_id", out var uid)
+                && uid.ValueKind == JsonValueKind.String)
+            {
+                req = req with { User = uid.GetString() };
+            }
+
+            var messages = new List<NormalizedMessage>();
+
+            if (root.TryGetProperty("system", out var system))
+            {
+                var systemText = system.ValueKind switch
+                {
+                    JsonValueKind.String => system.GetString(),
+                    JsonValueKind.Array => string.Concat(system.EnumerateArray()
+                        .Where(b => b.TryGetProperty("type", out var bt) && bt.ValueKind == JsonValueKind.String
+                            && bt.GetString() == "text"
+                            && b.TryGetProperty("text", out var btx) && btx.ValueKind == JsonValueKind.String)
+                        .Select(b => b.GetProperty("text").GetString())),
+                    _ => null,
+                };
+                if (systemText.IsNotEmpty())
+                {
+                    messages.Add(new NormalizedMessage { Role = "system", Content = systemText });
+                }
+            }
+
+            if (root.TryGetProperty("messages", out var anthMessages) && anthMessages.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var m in anthMessages.EnumerateArray())
+                {
+                    if (m.ValueKind != JsonValueKind.Object)
+                    {
+                        continue;
+                    }
+
+                    var role = m.TryGetProperty("role", out var r) && r.ValueKind == JsonValueKind.String
+                        ? r.GetString() ?? "user"
+                        : "user";
+                    if (!m.TryGetProperty("content", out var content))
+                    {
+                        continue;
+                    }
+
+                    if (content.ValueKind == JsonValueKind.String)
+                    {
+                        messages.Add(new NormalizedMessage { Role = role, Content = content.GetString() });
+                        continue;
+                    }
+
+                    if (content.ValueKind != JsonValueKind.Array)
+                    {
+                        continue;
+                    }
+
+                    string? text = null;
+                    var toolCalls = new List<NormalizedToolCall>();
+                    var toolResults = new List<NormalizedMessage>();
+
+                    foreach (var block in content.EnumerateArray())
+                    {
+                        if (block.ValueKind != JsonValueKind.Object
+                            || !block.TryGetProperty("type", out var bt)
+                            || bt.ValueKind != JsonValueKind.String)
+                        {
+                            continue;
+                        }
+
+                        var blockType = bt.GetString();
+                        switch (blockType)
+                        {
+                            case "text":
+                                if (block.TryGetProperty("text", out var tx) && tx.ValueKind == JsonValueKind.String
+                                    && tx.GetString().IsNotEmpty())
+                                {
+                                    text = text is null ? tx.GetString() : text + tx.GetString();
+                                }
+                                break;
+
+                            case "tool_use":
+                                toolCalls.Add(new NormalizedToolCall
+                                {
+                                    Id = block.TryGetProperty("id", out var tuid)
+                                        && tuid.ValueKind == JsonValueKind.String
+                                        ? tuid.GetString() ?? ""
+                                        : "",
+                                    Function = new NormalizedFunctionCall
+                                    {
+                                        Name = block.TryGetProperty("name", out var tun)
+                                            && tun.ValueKind == JsonValueKind.String
+                                            ? tun.GetString() ?? ""
+                                            : "",
+                                        Arguments = block.TryGetProperty("input", out var tui)
+                                            ? AnthropicInputToArguments(tui)
+                                            : "{}",
+                                    },
+                                });
+                                break;
+
+                            case "tool_result":
+                                toolResults.Add(new NormalizedMessage
+                                {
+                                    Role = "tool",
+                                    ToolCallId = block.TryGetProperty("tool_use_id", out var trid)
+                                        && trid.ValueKind == JsonValueKind.String
+                                        ? trid.GetString()
+                                        : null,
+                                    Content = block.TryGetProperty("content", out var trc)
+                                        ? AnthropicContentToString(trc)
+                                        : null,
+                                });
+                                break;
+                        }
+                    }
+
+                    // OpenAI-style tool results precede any remaining user text.
+                    messages.AddRange(toolResults);
+                    if (text is not null || toolCalls.Count > 0 || role == "assistant")
+                    {
+                        messages.Add(new NormalizedMessage
+                        {
+                            Role = role,
+                            Content = text,
+                            ToolCalls = toolCalls.Count > 0 ? toolCalls : null,
+                        });
+                    }
+                }
+
+                req = req with { Messages = messages };
+            }
+
+            if (root.TryGetProperty("tools", out var tools) && tools.ValueKind == JsonValueKind.Array)
+            {
+                var list = new List<NormalizedTool>();
+                foreach (var tool in tools.EnumerateArray())
+                {
+                    if (tool.ValueKind != JsonValueKind.Object)
+                    {
+                        continue;
+                    }
+
+                    var name = tool.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String
+                        ? n.GetString() ?? ""
+                        : "";
+                    JsonElement? parameters = null;
+                    if (tool.TryGetProperty("input_schema", out var schema) && schema.ValueKind == JsonValueKind.Object)
+                    {
+                        parameters = schema.Clone();
+                    }
+
+                    if (name.IsNullOrEmpty())
+                    {
+                        continue;
+                    }
+
+                    list.Add(new NormalizedTool
+                    {
+                        Function = new NormalizedFunctionDef
+                        {
+                            Name = name,
+                            Description = tool.TryGetProperty("description", out var d)
+                                && d.ValueKind == JsonValueKind.String
+                                ? d.GetString()
+                                : null,
+                            Parameters = parameters,
+                        },
+                    });
+                }
+
+                if (list.Count > 0)
+                {
+                    req = req with { Tools = list };
+                }
+            }
+
+            if (root.TryGetProperty("tool_choice", out var tc))
+            {
+                if (tc.ValueKind == JsonValueKind.String)
+                {
+                    req = req with { ToolChoice = tc.GetString() };
+                }
+                else if (tc.ValueKind == JsonValueKind.Object
+                    && tc.TryGetProperty("type", out var tcType)
+                    && tcType.ValueKind == JsonValueKind.String)
+                {
+                    var choice = tcType.GetString() switch
+                    {
+                        "auto" => "auto",
+                        "any" => "required",
+                        "none" => "none",
+                        "tool" => tc.TryGetProperty("name", out var tn) && tn.ValueKind == JsonValueKind.String
+                            ? tn.GetString()
+                            : null,
+                        _ => null,
+                    };
+                    if (choice.IsNotEmpty())
+                    {
+                        req = req with { ToolChoice = choice };
+                    }
+                }
+            }
+
+            return req;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string AnthropicInputToArguments(JsonElement input)
+    {
+        return input.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
+            ? "{}"
+            : input.GetRawText();
+    }
+
+    /// <summary>
+    /// Reads OpenAI "stop" or Anthropic "stop_sequences" (string or string[]) into a list.
+    /// </summary>
+    private static List<string>? ParseStop(JsonElement root)
+    {
+        if (!root.TryGetProperty("stop", out var stop)
+            && !root.TryGetProperty("stop_sequences", out stop))
+        {
+            return null;
+        }
+
+        List<string>? list = stop.ValueKind switch
+        {
+            JsonValueKind.String when stop.GetString().IsNotEmpty() => [stop.GetString()!],
+            JsonValueKind.Array => stop.EnumerateArray()
+                .Where(s => s.ValueKind == JsonValueKind.String && s.GetString().IsNotEmpty())
+                .Select(s => s.GetString()!)
+                .ToList() is { Count: > 0 } items ? items : null,
+            _ => null,
+        };
+
+        return list;
+    }
+
+    /// <summary>
+    /// Resolves an OpenAI tool_choice object to the normalized bare form:
+    /// {type:function, function:{name}} → name; otherwise the type string (auto/required/none).
+    /// </summary>
+    private static string? ResolveToolChoiceObject(JsonElement tc, string? typeName)
+    {
+        if (typeName.Equals("function", StringComparison.OrdinalIgnoreCase)
+            && tc.TryGetProperty("function", out var fn)
+            && fn.TryGetProperty("name", out var fnName)
+            && fnName.ValueKind == JsonValueKind.String
+            && fnName.GetString().IsNotEmpty())
+        {
+            return fnName.GetString();
+        }
+
+        return typeName;
+    }
+
+    private static string? AnthropicContentToString(JsonElement content)
+    {
+        if (content.ValueKind == JsonValueKind.String)
+        {
+            return content.GetString();
+        }
+
+        if (content.ValueKind == JsonValueKind.Array)
+        {
+            var parts = new List<string>();
+            foreach (var block in content.EnumerateArray())
+            {
+                if (block.ValueKind == JsonValueKind.Object
+                    && block.TryGetProperty("type", out var bt) && bt.ValueKind == JsonValueKind.String
+                    && bt.GetString() == "text"
+                    && block.TryGetProperty("text", out var tx) && tx.ValueKind == JsonValueKind.String
+                    && tx.GetString().IsNotEmpty())
+                {
+                    parts.Add(tx.GetString()!);
+                }
+            }
+
+            return parts.Count > 0 ? string.Concat(parts) : content.GetRawText();
+        }
+
+        return content.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
+            ? null
+            : content.GetRawText();
+    }
+
     public static string WriteChatCompletion(NormalizedCompletionResponse response, string? modelRef)
     {
         var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -284,7 +604,8 @@ public static class ClientFormat
                     ["message"] = new Dictionary<string, object?>
                     {
                         ["role"] = "assistant",
-                        ["content"] = response.Content,
+                        // OpenAI serializes assistant tool-call turns with explicit null content.
+                        ["content"] = response.Content is not null ? response.Content : JsonNull,
                         ["tool_calls"] = toolCalls,
                     },
                     ["finish_reason"] = response.FinishReason ?? (toolCalls is { Count: > 0 } ? "tool_calls" : "stop"),
@@ -351,6 +672,100 @@ public static class ClientFormat
         };
 
         return JsonSerializer.Serialize(payload, _wireOptions);
+    }
+
+    public static string WriteAnthropicMessage(NormalizedCompletionResponse response, string? modelRef)
+    {
+        var content = new List<object?>();
+        if (response.Content.IsNotEmpty())
+        {
+            content.Add(new Dictionary<string, object?>
+            {
+                ["type"] = "text",
+                ["text"] = response.Content,
+            });
+        }
+
+        if (response.ToolCalls is { Count: > 0 })
+        {
+            foreach (var tc in response.ToolCalls)
+            {
+                content.Add(new Dictionary<string, object?>
+                {
+                    ["type"] = "tool_use",
+                    ["id"] = tc.Id.IsNullOrEmpty() ? $"toolu_{Guid.NewGuid():N}"[..28] : tc.Id,
+                    ["name"] = tc.Function?.Name ?? "",
+                    ["input"] = ParseArgumentsObject(tc.Function?.Arguments),
+                });
+            }
+        }
+
+        var payload = new Dictionary<string, object?>
+        {
+            ["id"] = response.Id.IsNullOrEmpty() || !response.Id.StartsWith("msg_", StringComparison.Ordinal)
+                ? $"msg_{Guid.NewGuid().ToString("N")[..24]}"
+                : response.Id,
+            ["type"] = "message",
+            ["role"] = "assistant",
+            ["model"] = modelRef ?? response.Model,
+            ["content"] = content,
+            ["stop_reason"] = MapAnthropicStopReason(response.FinishReason, response.ToolCalls is { Count: > 0 }),
+            ["stop_sequence"] = null,
+            ["usage"] = new Dictionary<string, object?>
+            {
+                ["input_tokens"] = response.PromptTokens ?? 0,
+                ["output_tokens"] = response.CompletionTokens ?? 0,
+            },
+        };
+
+        return Serialize(payload);
+    }
+
+    public static string WriteAnthropicError(OpenCodeError error)
+    {
+        return Serialize(new Dictionary<string, object?>
+        {
+            ["type"] = "error",
+            ["error"] = new Dictionary<string, object?>
+            {
+                ["type"] = error.Type.IsNullOrEmpty() || error.Type == "server_error"
+                    ? "api_error"
+                    : error.Type,
+                ["message"] = error.Message,
+                ["param"] = error.Param,
+                ["code"] = error.Code,
+            },
+        });
+    }
+
+    private static object ParseArgumentsObject(string? arguments)
+    {
+        if (arguments.IsNotEmpty())
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(arguments);
+                return doc.RootElement.Clone();
+            }
+            catch
+            {
+                // Fall through to empty object.
+            }
+        }
+
+        return new Dictionary<string, object?>();
+    }
+
+    private static string MapAnthropicStopReason(string? finishReason, bool hasToolCalls)
+    {
+        return finishReason switch
+        {
+            "tool_calls" or "tool_use" => "tool_use",
+            "length" => "max_tokens",
+            "stop" or "end_turn" => "end_turn",
+            null or "" => hasToolCalls ? "tool_use" : "end_turn",
+            _ => "end_turn",
+        };
     }
 
     public static string WriteChatChunk(
@@ -687,4 +1102,217 @@ public static class ClientFormat
 
         return list.Count > 0 ? list : null;
     }
+}
+
+/// <summary>
+/// Emits Anthropic Messages API SSE events from normalized stream events.
+/// </summary>
+public sealed class AnthropicStreamWriter
+{
+    private static readonly JsonSerializerOptions _wireOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    private readonly string _modelRef;
+    private readonly string _messageId = $"msg_{Guid.NewGuid().ToString("N")[..24]}";
+    private bool _messageStarted;
+    private int _blockIndex = -1;
+    private string? _blockType;
+    private int? _promptTokens;
+    private int? _completionTokens;
+
+    public AnthropicStreamWriter(string? modelRef)
+    {
+        _modelRef = modelRef ?? "";
+    }
+
+    public IReadOnlyList<(string EventName, string Json)> Write(NormalizedStreamEvent evt)
+    {
+        var events = new List<(string, string)>();
+        switch (evt.Type)
+        {
+            case NormalizedStreamEventType.Usage:
+                _promptTokens = evt.PromptTokens ?? _promptTokens;
+                _completionTokens = evt.CompletionTokens ?? _completionTokens;
+                break;
+
+            case NormalizedStreamEventType.TextDelta:
+                EnsureStarted(events);
+                if (_blockType != "text")
+                {
+                    CloseBlock(events);
+                    OpenTextBlock(events);
+                }
+                events.Add(("content_block_delta", Serialize(new Dictionary<string, object?>
+                {
+                    ["type"] = "content_block_delta",
+                    ["index"] = _blockIndex,
+                    ["delta"] = new Dictionary<string, object?>
+                    {
+                        ["type"] = "text_delta",
+                        ["text"] = evt.Text ?? "",
+                    },
+                })));
+                break;
+
+            case NormalizedStreamEventType.ToolCallDelta:
+                EnsureStarted(events);
+                if (evt.ToolName.IsNotEmpty())
+                {
+                    CloseBlock(events);
+                    OpenToolBlock(events, evt);
+                }
+
+                if (evt.ArgumentsDelta is not null)
+                {
+                    if (_blockType != "tool_use")
+                    {
+                        CloseBlock(events);
+                        OpenToolBlock(events, evt);
+                    }
+
+                    events.Add(("content_block_delta", Serialize(new Dictionary<string, object?>
+                    {
+                        ["type"] = "content_block_delta",
+                        ["index"] = _blockIndex,
+                        ["delta"] = new Dictionary<string, object?>
+                        {
+                            ["type"] = "input_json_delta",
+                            ["partial_json"] = evt.ArgumentsDelta,
+                        },
+                    })));
+                }
+                break;
+
+            case NormalizedStreamEventType.Done:
+                EnsureStarted(events);
+                var hadToolBlock = _blockType == "tool_use";
+                CloseBlock(events);
+                var stopReason = MapStopReason(evt.FinishReason, hadToolBlock);
+                events.Add(("message_delta", Serialize(new Dictionary<string, object?>
+                {
+                    ["type"] = "message_delta",
+                    ["delta"] = new Dictionary<string, object?>
+                    {
+                        ["stop_reason"] = stopReason,
+                        ["stop_sequence"] = null,
+                    },
+                    ["usage"] = new Dictionary<string, object?>
+                    {
+                        ["input_tokens"] = _promptTokens ?? 0,
+                        ["output_tokens"] = _completionTokens ?? 0,
+                    },
+                })));
+                events.Add(("message_stop", Serialize(new Dictionary<string, object?>
+                {
+                    ["type"] = "message_stop",
+                })));
+                break;
+
+            case NormalizedStreamEventType.Error:
+                events.Add(("error", ClientFormat.WriteAnthropicError(new OpenCodeError(
+                    evt.ErrorType ?? "api_error",
+                    evt.ErrorMessage ?? "Upstream error."))));
+                break;
+        }
+
+        return events;
+    }
+
+    private void EnsureStarted(List<(string, string)> events)
+    {
+        if (_messageStarted)
+        {
+            return;
+        }
+
+        _messageStarted = true;
+        events.Add(("message_start", Serialize(new Dictionary<string, object?>
+        {
+            ["type"] = "message_start",
+            ["message"] = new Dictionary<string, object?>
+            {
+                ["id"] = _messageId,
+                ["type"] = "message",
+                ["role"] = "assistant",
+                ["model"] = _modelRef,
+                ["content"] = new List<object?>(),
+                ["stop_reason"] = null,
+                ["stop_sequence"] = null,
+                ["usage"] = new Dictionary<string, object?>
+                {
+                    ["input_tokens"] = _promptTokens ?? 0,
+                    ["output_tokens"] = _completionTokens ?? 0,
+                },
+            },
+        })));
+    }
+
+    private void CloseBlock(List<(string, string)> events)
+    {
+        if (_blockType is null)
+        {
+            return;
+        }
+
+        events.Add(("content_block_stop", Serialize(new Dictionary<string, object?>
+        {
+            ["type"] = "content_block_stop",
+            ["index"] = _blockIndex,
+        })));
+        _blockType = null;
+    }
+
+    private void OpenTextBlock(List<(string, string)> events)
+    {
+        _blockType = "text";
+        _blockIndex++;
+        events.Add(("content_block_start", Serialize(new Dictionary<string, object?>
+        {
+            ["type"] = "content_block_start",
+            ["index"] = _blockIndex,
+            ["content_block"] = new Dictionary<string, object?>
+            {
+                ["type"] = "text",
+                ["text"] = "",
+            },
+        })));
+    }
+
+    private void OpenToolBlock(List<(string, string)> events, NormalizedStreamEvent evt)
+    {
+        _blockType = "tool_use";
+        _blockIndex++;
+        var toolId = evt.ToolCallId.IsNotEmpty()
+            ? evt.ToolCallId!
+            : $"toolu_{Guid.NewGuid().ToString("N")[..24]}";
+        events.Add(("content_block_start", Serialize(new Dictionary<string, object?>
+        {
+            ["type"] = "content_block_start",
+            ["index"] = _blockIndex,
+            ["content_block"] = new Dictionary<string, object?>
+            {
+                ["type"] = "tool_use",
+                ["id"] = toolId,
+                ["name"] = evt.ToolName ?? "",
+                ["input"] = new Dictionary<string, object?>(),
+            },
+        })));
+    }
+
+    private static string MapStopReason(string? finishReason, bool hadToolBlock)
+    {
+        return finishReason switch
+        {
+            "tool_calls" or "tool_use" => "tool_use",
+            "length" => "max_tokens",
+            "stop" or "end_turn" => "end_turn",
+            null or "" => hadToolBlock ? "tool_use" : "end_turn",
+            _ => "end_turn",
+        };
+    }
+
+    private static string Serialize(object payload) => JsonSerializer.Serialize(payload, _wireOptions);
 }

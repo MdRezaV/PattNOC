@@ -10,7 +10,7 @@ public class OpenCodeConfigDefaultsTests
         await item.Enabled.Should().BeFalse();
         await item.GatewayEnabled.Should().BeTrue();
         await item.DefaultTarget.Should().BeEqualTo(TargetCatalogDefaults.OpenCodeFreeTargetId);
-        await item.DefaultModel.Should().BeEqualTo("big-pickle");
+        await item.DefaultModel.Should().BeEmpty();
         await item.GatewayHost.Should().BeEqualTo(Global.Loopback);
         await item.GatewayPort.Should().BeEqualTo(OpenCodeConfigDefaults.DefaultGatewayPort);
         await item.ConnectTimeoutSeconds.Should().BeEqualTo(10);
@@ -21,20 +21,6 @@ public class OpenCodeConfigDefaultsTests
         await item.Targets[0].Id.Should().BeEqualTo("opencode-free");
         await item.Targets[0].KeyOptional.Should().BeTrue();
         await item.Targets[0].ApiKey.Should().BeNull();
-    }
-
-    [Test]
-    public async Task CreateFreeModels_ContainsChatCompletionsFreeModels()
-    {
-        var models = TargetCatalogDefaults.CreateFreeModels();
-
-        await models.Should().NotBeEmpty();
-        await models.Should().Contain(m => m.Id == "big-pickle" && m.ApiStyle == EOpenCodeApiStyle.ChatCompletions);
-        await models.Should().Contain(m => m.Id == "mimo-v2.5-free");
-        await models.Should().Contain(m => m.Id == "space-bunny-free");
-        await models.Should().Contain(m => m.ApiStyle == EOpenCodeApiStyle.Responses);
-        await models.All(m => m.Source == "default").Should().BeTrue();
-        await models.All(m => m.IsFree).Should().BeTrue();
     }
 
     [Test]
@@ -59,7 +45,7 @@ public class OpenCodeConfigDefaultsTests
         await item.RequestTimeoutSeconds.Should().BeEqualTo(120);
         await item.MaxRetry.Should().BeEqualTo(3);
         await item.MaxConcurrentRequests.Should().BeEqualTo(8);
-        await item.DefaultModel.Should().BeEqualTo("big-pickle");
+        await item.DefaultModel.Should().BeEmpty();
         await item.GatewayHost.Should().BeEqualTo(Global.Loopback);
         await item.Targets.Should().NotBeEmpty();
     }
@@ -70,7 +56,7 @@ public class OpenCodeConfigDefaultsTests
         var item = new OpenCodeItem
         {
             DefaultTarget = "does-not-exist",
-            DefaultModel = "big-pickle",
+            DefaultModel = "",
             Targets = TargetCatalogDefaults.CreateDefaultTargets(),
         };
 
@@ -85,7 +71,7 @@ public class OpenCodeConfigDefaultsTests
         var item = new OpenCodeItem
         {
             DefaultTarget = "opencode-free",
-            DefaultModel = "big-pickle",
+            DefaultModel = "",
             Targets =
             [
                 new OpenCodeTargetItem

@@ -322,6 +322,11 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
             body["max_output_tokens"] = req.MaxTokens;
         }
 
+        if (req.Stop is { Count: > 0 })
+        {
+            body["stop"] = req.Stop.Count == 1 ? req.Stop[0] : req.Stop;
+        }
+
         if (req.User.IsNotEmpty())
         {
             body["user"] = req.User;
@@ -332,9 +337,10 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
             body["tools"] = req.Tools.Select(ToolToWire).ToList();
         }
 
-        if (req.ToolChoice.IsNotEmpty())
+        var toolChoice = ToolChoiceToWire(req.ToolChoice);
+        if (toolChoice is not null)
         {
-            body["tool_choice"] = req.ToolChoice;
+            body["tool_choice"] = toolChoice;
         }
 
         if (req.ResponseFormatType.IsNotEmpty() && !req.ResponseFormatType.Equals("text", StringComparison.OrdinalIgnoreCase))
@@ -350,6 +356,31 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
         }
 
         return body;
+    }
+
+    /// <summary>
+    /// OpenAI Responses API tool_choice: auto/none/required stay strings;
+    /// a named tool must be {"type":"function","name":"..."}.
+    /// </summary>
+    internal static object? ToolChoiceToWire(string? toolChoice)
+    {
+        if (toolChoice.IsNullOrEmpty())
+        {
+            return null;
+        }
+
+        if (toolChoice.Equals("auto", StringComparison.OrdinalIgnoreCase)
+            || toolChoice.Equals("none", StringComparison.OrdinalIgnoreCase)
+            || toolChoice.Equals("required", StringComparison.OrdinalIgnoreCase))
+        {
+            return toolChoice;
+        }
+
+        return new Dictionary<string, object?>
+        {
+            ["type"] = "function",
+            ["name"] = toolChoice,
+        };
     }
 
     private static List<object?> BuildInput(List<NormalizedMessage> messages)

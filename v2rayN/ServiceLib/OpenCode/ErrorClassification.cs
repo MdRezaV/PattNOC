@@ -111,6 +111,25 @@ public static class ErrorClassification
         return JsonSerializer.Serialize(payload, _errorJsonOptions);
     }
 
+    public static string ToAnthropicErrorJson(OpenCodeError error)
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["type"] = "error",
+            ["error"] = new Dictionary<string, object?>
+            {
+                ["type"] = error.Type.IsNullOrEmpty() || error.Type == "server_error"
+                    ? "api_error"
+                    : error.Type,
+                ["message"] = error.Message,
+                ["param"] = error.Param,
+                ["code"] = error.Code,
+            },
+        };
+
+        return JsonSerializer.Serialize(payload, _errorJsonOptions);
+    }
+
     private static string? Truncate(string? value, int max)
     {
         if (value.IsNullOrEmpty())

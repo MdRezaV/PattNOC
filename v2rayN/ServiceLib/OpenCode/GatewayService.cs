@@ -69,13 +69,16 @@ public sealed class GatewayService
             _concurrency = new SemaphoreSlim(Math.Max(1, settings.MaxConcurrentRequests));
 
             app.MapGet("/v1/models", ctx => HandleListModels(ctx, claudeAlias: false));
-            app.MapGet("/v1/claude/models", ctx => HandleListModels(ctx, claudeAlias: true));
+            app.MapGet("/claude/v1/models", ctx => HandleListModels(ctx, claudeAlias: true));
             app.MapGet("/v1/models/{modelId}", (HttpContext ctx, string modelId) => HandleGetModel(ctx, modelId, claudeAlias: false));
-            app.MapGet("/v1/claude/models/{modelId}", (HttpContext ctx, string modelId) => HandleGetModel(ctx, modelId, claudeAlias: true));
+            app.MapGet("/claude/v1/models/{modelId}", (HttpContext ctx, string modelId) => HandleGetModel(ctx, modelId, claudeAlias: true));
             app.MapPost("/v1/chat/completions", ctx => HandleCompletion(ctx, "chat", claudeAlias: false));
-            app.MapPost("/v1/claude/chat/completions", ctx => HandleCompletion(ctx, "chat", claudeAlias: true));
+            app.MapPost("/claude/v1/chat/completions", ctx => HandleCompletion(ctx, "chat", claudeAlias: true));
             app.MapPost("/v1/responses", ctx => HandleCompletion(ctx, "responses", claudeAlias: false));
-            app.MapPost("/v1/claude/responses", ctx => HandleCompletion(ctx, "responses", claudeAlias: true));
+            app.MapPost("/claude/v1/responses", ctx => HandleCompletion(ctx, "responses", claudeAlias: true));
+            // Anthropic Messages API — what Claude Code actually calls (ANTHROPIC_BASE_URL + /v1/messages).
+            app.MapPost("/v1/messages", ctx => HandleCompletion(ctx, "anthropic", claudeAlias: false));
+            app.MapPost("/claude/v1/messages", ctx => HandleCompletion(ctx, "anthropic", claudeAlias: true));
 
             await app.StartAsync(ct);
 
@@ -88,7 +91,7 @@ public sealed class GatewayService
             }
 
             _app = app;
-            Logging.SaveLog($"{Tag} started on http://{host}:{_boundPort}/v1 (claude alias: /v1/claude)");
+            Logging.SaveLog($"{Tag} started on http://{host}:{_boundPort}/v1 (claude alias: /claude/v1, /claude/v1/messages)");
             return true;
         }
         catch (Exception ex)
@@ -248,25 +251,39 @@ public sealed class GatewayService
                 return;
             }
 
-            var request = clientFormat == "chat"
-                ? ClientFormat.ParseChatRequest(body)
-                : ClientFormat.ParseResponsesRequest(body);
+            var request = clientFormat switch
+            {
+                "chat" => ClientFormat.ParseChatRequest(body),
+                "anthropic" => ClientFormat.ParseAnthropicRequest(body),
+                _ => ClientFormat.ParseResponsesRequest(body),
+            };
 
             if (request is null)
             {
                 await WriteError(context, 400, new OpenCodeError(
-                    "invalid_request_error", "Malformed request body.", 400));
+                    "invalid_request_error", "Malformed request body.", 400), clientFormat);
                 return;
             }
 
-            // Claude alias clients send "claude-x"; resolve/execute against the real "x"
-            // but echo the claude-prefixed name back so the client's model list stays consistent.
-            var modelRef = request.Model.IsNullOrEmpty() ? settings.DefaultModel : request.Model;
-            if (claudeAlias)
+            // Clients may send either the bare catalog id or a claude- alias id
+            // (e.g. a model name copied from the /claude/v1 model list into a
+            // non-alias client, or Claude Code itself). Resolve against the bare id;
+            // echo the name the client used (or the claude-prefixed default on the
+            // alias routes) so responses stay consistent with the model list.
+            var rawModel = request.Model.IsNullOrEmpty() ? settings.DefaultModel : request.Model;
+            var bareModel = StripClaudePrefix(rawModel);
+            request = request with { Model = bareModel };
+            var modelRef = claudeAlias ? ApplyClaudePrefix(bareModel) : rawModel;
+
+            if (settings.FreeOnly)
             {
-                request = request with { Model = StripClaudePrefix(request.Model) };
-                modelRef = ApplyClaudePrefix(
-                    request.Model.IsNullOrEmpty() ? settings.DefaultModel : request.Model);
+                var (_, resolvedModel) = _catalog.ResolveTargetModel(bareModel, settings);
+                if (resolvedModel is null || !resolvedModel.IsFree)
+                {
+                    await WriteError(context, 404, new OpenCodeError(
+                        "not_found_error", $"Model '{modelRef}' not found.", 404, null, "model_not_found"), clientFormat);
+                    return;
+                }
             }
 
             var result = await _executor.ExecuteAsync(request, settings, context.RequestAborted);
@@ -282,7 +299,7 @@ public sealed class GatewayService
                 }
 
                 await WriteError(context, status, result.Error ?? new OpenCodeError(
-                    "server_error", "Request failed.", status));
+                    "server_error", "Request failed.", status), clientFormat);
                 return;
             }
 
@@ -295,13 +312,16 @@ public sealed class GatewayService
             if (result.Response is null)
             {
                 await WriteError(context, 502, new OpenCodeError(
-                    "server_error", "Upstream returned no content.", 502));
+                    "server_error", "Upstream returned no content.", 502), clientFormat);
                 return;
             }
 
-            var json = clientFormat == "chat"
-                ? ClientFormat.WriteChatCompletion(result.Response, modelRef)
-                : ClientFormat.WriteResponses(result.Response, modelRef);
+            var json = clientFormat switch
+            {
+                "chat" => ClientFormat.WriteChatCompletion(result.Response, modelRef),
+                "anthropic" => ClientFormat.WriteAnthropicMessage(result.Response, modelRef),
+                _ => ClientFormat.WriteResponses(result.Response, modelRef),
+            };
             await WriteJson(context, 200, json);
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
@@ -316,7 +336,7 @@ public sealed class GatewayService
                 if (!context.Response.HasStarted)
                 {
                     await WriteError(context, 500, new OpenCodeError(
-                        "server_error", "Internal gateway error.", 500));
+                        "server_error", "Internal gateway error.", 500), clientFormat);
                 }
             }
             catch
@@ -339,6 +359,25 @@ public sealed class GatewayService
         context.Response.ContentType = "text/event-stream";
         context.Response.Headers.CacheControl = "no-cache";
         var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        if (clientFormat == "anthropic")
+        {
+            var writer = new AnthropicStreamWriter(modelRef);
+            await foreach (var evt in events.WithCancellation(context.RequestAborted))
+            {
+                foreach (var (eventName, json) in writer.Write(evt))
+                {
+                    await WriteSse(context, eventName, json);
+                    if (eventName is "message_stop" or "error")
+                    {
+                        return;
+                    }
+                }
+            }
+
+            return;
+        }
+
         var responseId = clientFormat == "chat"
             ? $"chatcmpl-{Guid.NewGuid().ToString("N")[..12]}"
             : $"resp_{Guid.NewGuid().ToString("N")[..12]}";
@@ -410,8 +449,11 @@ public sealed class GatewayService
         await context.Response.WriteAsync(json, context.RequestAborted);
     }
 
-    private static async Task WriteError(HttpContext context, int status, OpenCodeError error)
+    private static async Task WriteError(HttpContext context, int status, OpenCodeError error, string clientFormat = "chat")
     {
-        await WriteJson(context, status, ClientFormat.WriteError(error));
+        var json = clientFormat == "anthropic"
+            ? ClientFormat.WriteAnthropicError(error)
+            : ClientFormat.WriteError(error);
+        await WriteJson(context, status, json);
     }
 }

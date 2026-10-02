@@ -199,9 +199,9 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
         ApiKeySet = _originalApiKey.IsNotEmpty();
 
         ClientExampleText =
-            $"Base URL: http://{item.GatewayHost}:{item.GatewayPort}/v1\n" +
-            $"Claude alias: http://{item.GatewayHost}:{item.GatewayPort}/v1/claude\n" +
-            $"Model: {item.DefaultModel}";
+            $"OpenAI base URL: http://{item.GatewayHost}:{item.GatewayPort}/v1\n" +
+            $"Claude Code ANTHROPIC_BASE_URL: http://{item.GatewayHost}:{item.GatewayPort}/claude\n" +
+            $"Model: claude-{item.DefaultModel}";
     }
 
     private OpenCodeTargetItem? GetTarget(OpenCodeItem item)
@@ -241,9 +241,9 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
             _ = ConfigHandler.SaveConfig(_config);
 
             ClientExampleText =
-                $"Base URL: http://{item.GatewayHost}:{item.GatewayPort}/v1\n" +
-                $"Claude alias: http://{item.GatewayHost}:{item.GatewayPort}/v1/claude\n" +
-                $"Model: {item.DefaultModel}";
+                $"OpenAI base URL: http://{item.GatewayHost}:{item.GatewayPort}/v1\n" +
+                $"Claude Code ANTHROPIC_BASE_URL: http://{item.GatewayHost}:{item.GatewayPort}/claude\n" +
+                $"Model: claude-{item.DefaultModel}";
         }
         catch (Exception ex)
         {

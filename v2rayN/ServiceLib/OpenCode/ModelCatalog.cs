@@ -28,11 +28,6 @@ public sealed class ModelCatalog
             }
         }
 
-        if (targetId.Equals(TargetCatalogDefaults.OpenCodeFreeTargetId, StringComparison.OrdinalIgnoreCase))
-        {
-            return TargetCatalogDefaults.CreateFreeModels();
-        }
-
         return [];
     }
 
@@ -113,37 +108,19 @@ public sealed class ModelCatalog
                 return false;
             }
 
-            var defaults = TargetCatalogDefaults.CreateFreeModels();
-            var merged = new List<OpenCodeModel>(remoteIds.Count);
+            var models = new List<OpenCodeModel>(remoteIds.Count);
             foreach (var id in remoteIds)
             {
-                var existing = defaults.FirstOrDefault(d => d.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
-                if (existing is not null)
-                {
-                    merged.Add(existing);
-                }
-                else
-                {
-                    var isFree = id.EndsWith("-free", StringComparison.OrdinalIgnoreCase);
-                    merged.Add(new OpenCodeModel(
-                        id, id,
-                        ParseApiStyle(target.DefaultApiStyle),
-                        null, true, true, true, false, "remote", isFree));
-                }
-            }
-
-            // Keep known default models that the remote list omitted so keyless fallback stays usable.
-            foreach (var d in defaults)
-            {
-                if (merged.All(m => !m.Id.Equals(d.Id, StringComparison.OrdinalIgnoreCase)))
-                {
-                    merged.Add(d);
-                }
+                var isFree = id.EndsWith("-free", StringComparison.OrdinalIgnoreCase);
+                models.Add(new OpenCodeModel(
+                    id, id,
+                    ParseApiStyle(target.DefaultApiStyle),
+                    null, true, true, true, false, "remote", isFree));
             }
 
             lock (_lock)
             {
-                _cache.ModelsByTarget[target.Id] = merged;
+                _cache.ModelsByTarget[target.Id] = models;
                 _cache.UpdatedAt = DateTime.UtcNow;
             }
 
@@ -260,6 +237,12 @@ public sealed class ModelCatalog
             var cache = JsonUtils.Deserialize<OpenCodeCatalogCache>(content);
             if (cache is not null)
             {
+                // Remove any legacy "default" source entries; remote is the single source of truth.
+                foreach (var kvp in cache.ModelsByTarget)
+                {
+                    kvp.Value.RemoveAll(m => m.Source.Equals("default", StringComparison.OrdinalIgnoreCase));
+                }
+
                 lock (_lock)
                 {
                     _cache = cache;

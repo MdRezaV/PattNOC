@@ -67,7 +67,21 @@ public class RequestExecutorTests
         HttpMessageHandler handler,
         string? cachePath = null)
     {
-        var catalog = new ModelCatalog(provider, cachePath ?? Path.Combine(Path.GetTempPath(), $"oc_{Guid.NewGuid():N}.json"));
+        var actualCachePath = cachePath ?? Path.Combine(Path.GetTempPath(), $"oc_{Guid.NewGuid():N}.json");
+        var cache = new OpenCodeCatalogCache
+        {
+            UpdatedAt = DateTime.UtcNow,
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("big-pickle", "Big Pickle", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote", IsFree: true),
+                ],
+            },
+        };
+        File.WriteAllText(actualCachePath, JsonUtils.Serialize(cache, true));
+        var catalog = new ModelCatalog(provider, actualCachePath);
         return new RequestExecutor(provider, catalog, new OpenCodeTelemetry(), () => handler);
     }
 
@@ -276,7 +290,21 @@ public class RequestExecutorTests
     {
         var handler = new StubHttpHandler(_ => Json(HttpStatusCode.OK, ChatOkBody()));
         var provider = new StubProxyProvider { Snapshot = Snapshot() };
-        var catalog = new ModelCatalog(provider, Path.Combine(Path.GetTempPath(), $"oc_{Guid.NewGuid():N}.json"));
+        var cachePath = Path.Combine(Path.GetTempPath(), $"oc_{Guid.NewGuid():N}.json");
+        var cache = new OpenCodeCatalogCache
+        {
+            UpdatedAt = DateTime.UtcNow,
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("big-pickle", "Big Pickle", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote", IsFree: true),
+                ],
+            },
+        };
+        File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+        var catalog = new ModelCatalog(provider, cachePath);
         var executor = new RequestExecutor(provider, catalog, new OpenCodeTelemetry(), () => handler);
 
         var settings = Settings();
@@ -289,6 +317,7 @@ public class RequestExecutorTests
         await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.AuthenticationFailed);
         await result.HttpStatus.Should().BeEqualTo(401);
         await handler.CallCount.Should().BeEqualTo(0);
+        try { File.Delete(cachePath); } catch { }
     }
 
     [Test]

@@ -2128,7 +2128,7 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
     <value>Models refreshed.</value>
   </data>
   <data name="OpenCodeRefreshFailed" xml:space="preserve">
-    <value>Model refresh failed. Built-in defaults remain available.</value>
+    <value>Model refresh failed. Check your connection and try again.</value>
   </data>
   <data name="OpenCodeSaved" xml:space="preserve">
     <value>OpenCode settings saved.</value>

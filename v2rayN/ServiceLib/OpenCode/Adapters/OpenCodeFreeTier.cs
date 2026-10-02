@@ -73,11 +73,33 @@ internal static class OpenCodeFreeTier
         msg.Headers.TryAddWithoutValidation("sec-fetch-mode", "cors");
     }
 
+    /// <summary>
+    /// Fields third-party clients (Claude Code, SDKs, curl) inject but the official
+    /// OpenCode desktop client never sends. The free tier fingerprints the whole
+    /// envelope, not just the tools block, so any of these left in the body trips
+    /// FreeTierError ("can only be used from within OpenCode"). Key names differ per
+    /// API style — Chat Completions uses max_tokens, Responses uses max_output_tokens.
+    /// </summary>
+    private static readonly string[] ClientOnlyFields =
+    [
+        // sampling
+        "temperature", "top_p", "top_k", "presence_penalty", "frequency_penalty",
+        "seed", "logit_bias", "n", "logprobs", "top_logprobs",
+        // length limits
+        "max_tokens", "max_completion_tokens", "max_output_tokens",
+        // identity / metadata
+        "user", "metadata", "store",
+        // tooling extras
+        "parallel_tool_calls", "thinking", "response_format", "text",
+        // permissions / stream plumbing
+        "permissions", "stream_options",
+    ];
+
     internal static void ApplyBodyShape(Dictionary<string, object?> body, EOpenCodeApiStyle apiStyle)
     {
         // Mirror the official OpenCode desktop client fingerprint body:
         // four unavailable core tools sorted alphabetically, tool_choice per API style,
-        // no permissions field, no stream_options field.
+        // and none of the sampling, length, or identity fields a third-party client adds.
         body["tools"] = new List<object?>
         {
             CreateUnavailableTool("bash", apiStyle),
@@ -88,8 +110,11 @@ internal static class OpenCodeFreeTier
         // Responses API upstream only accepts "auto" for tool_choice; Chat Completions
         // free-tier fingerprint uses "none".
         body["tool_choice"] = apiStyle == EOpenCodeApiStyle.Responses ? "auto" : "none";
-        body.Remove("permissions");
-        body.Remove("stream_options");
+
+        foreach (var key in ClientOnlyFields)
+        {
+            body.Remove(key);
+        }
     }
 
     private static Dictionary<string, object?> CreateUnavailableTool(string name, EOpenCodeApiStyle apiStyle)

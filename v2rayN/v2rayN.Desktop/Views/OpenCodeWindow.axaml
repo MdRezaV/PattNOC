@@ -94,8 +94,7 @@
                             x:Name="chkFreeOnly"
                             Margin="{StaticResource MarginLr8}"
                             DockPanel.Dock="Left"
-                            Content="{x:Static resx:ResUI.OpenCodeFreeOnly}"
-                            IsChecked="{Binding FilterFreeOnly, Mode=TwoWay}" />
+                            Content="{x:Static resx:ResUI.OpenCodeFreeOnly}" />
                         <ComboBox
                             x:Name="cboApiStyleFilter"
                             Width="140"

@@ -8,6 +8,10 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
+    // Boxed JsonElement null survives WhenWritingNull so assistant tool-call messages
+    // serialize with explicit "content": null as the OpenAI spec shows.
+    private static readonly JsonElement JsonNull = JsonSerializer.SerializeToElement<object?>(null);
+
     public EOpenCodeApiStyle Style => EOpenCodeApiStyle.ChatCompletions;
 
     public HttpRequestMessage BuildRequest(
@@ -245,6 +249,11 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
             body["max_tokens"] = req.MaxTokens;
         }
 
+        if (req.Stop is { Count: > 0 })
+        {
+            body["stop"] = req.Stop;
+        }
+
         if (req.User.IsNotEmpty())
         {
             body["user"] = req.User;
@@ -255,9 +264,10 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
             body["tools"] = req.Tools.Select(ToolToWire).ToList();
         }
 
-        if (req.ToolChoice.IsNotEmpty())
+        var toolChoice = ToolChoiceToWire(req.ToolChoice);
+        if (toolChoice is not null)
         {
-            body["tool_choice"] = req.ToolChoice;
+            body["tool_choice"] = toolChoice;
         }
 
         if (req.ResponseFormatType.IsNotEmpty() && !req.ResponseFormatType.Equals("text", StringComparison.OrdinalIgnoreCase))
@@ -275,6 +285,31 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
         return body;
     }
 
+    /// <summary>
+    /// OpenAI Chat Completions tool_choice: auto/none/required stay strings;
+    /// a named tool must be {"type":"function","function":{"name":"..."}}.
+    /// </summary>
+    internal static object? ToolChoiceToWire(string? toolChoice)
+    {
+        if (toolChoice.IsNullOrEmpty())
+        {
+            return null;
+        }
+
+        if (toolChoice.Equals("auto", StringComparison.OrdinalIgnoreCase)
+            || toolChoice.Equals("none", StringComparison.OrdinalIgnoreCase)
+            || toolChoice.Equals("required", StringComparison.OrdinalIgnoreCase))
+        {
+            return toolChoice;
+        }
+
+        return new Dictionary<string, object?>
+        {
+            ["type"] = "function",
+            ["function"] = new Dictionary<string, object?> { ["name"] = toolChoice },
+        };
+    }
+
     private static Dictionary<string, object?> MessageToWire(NormalizedMessage m)
     {
         var wire = new Dictionary<string, object?>
@@ -282,14 +317,22 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
             ["role"] = m.Role,
         };
 
-        if (m.Content is not null)
+        var isTool = m.Role.Equals("tool", StringComparison.OrdinalIgnoreCase);
+        var hasToolCalls = m.ToolCalls is { Count: > 0 };
+
+        if (isTool)
+        {
+            // OpenAI requires tool_call_id and content on every tool message.
+            wire["tool_call_id"] = m.ToolCallId ?? "";
+            wire["content"] = m.Content ?? "";
+        }
+        else if (hasToolCalls && m.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase))
+        {
+            wire["content"] = m.Content is not null ? m.Content : JsonNull;
+        }
+        else if (m.Content is not null)
         {
             wire["content"] = m.Content;
-        }
-
-        if (m.ToolCallId.IsNotEmpty())
-        {
-            wire["tool_call_id"] = m.ToolCallId;
         }
 
         if (m.Name.IsNotEmpty())
@@ -297,12 +340,12 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
             wire["name"] = m.Name;
         }
 
-        if (m.ToolCalls is { Count: > 0 })
+        if (hasToolCalls)
         {
-            wire["tool_calls"] = m.ToolCalls.Select(tc => new Dictionary<string, object?>
+            wire["tool_calls"] = m.ToolCalls!.Select(tc => new Dictionary<string, object?>
             {
                 ["id"] = tc.Id,
-                ["type"] = tc.Type,
+                ["type"] = tc.Type.IsNullOrEmpty() ? "function" : tc.Type,
                 ["function"] = new Dictionary<string, object?>
                 {
                     ["name"] = tc.Function?.Name ?? "",
