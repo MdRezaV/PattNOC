@@ -27,11 +27,6 @@ internal static class OpenCodeFreeTier
 
     public static string GenerateRequestId() => GenerateId("msg_");
 
-    public static void RegenerateSession()
-    {
-        // Session is regenerated per request; nothing to persist.
-    }
-
     internal static bool IsFreeTierTarget(OpenCodeTargetItem target)
     {
         return target.KeyOptional
@@ -93,6 +88,9 @@ internal static class OpenCodeFreeTier
         "parallel_tool_calls", "thinking", "response_format", "text",
         // permissions / stream plumbing
         "permissions", "stream_options",
+        // stop sequences — parsed from OpenAI "stop" and Anthropic "stop_sequences",
+        // but never sent by the official client, so they fingerprint as third-party.
+        "stop",
     ];
 
     internal static void ApplyBodyShape(Dictionary<string, object?> body, EOpenCodeApiStyle apiStyle)

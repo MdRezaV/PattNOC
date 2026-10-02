@@ -334,6 +334,7 @@ public class OpenCodeItem
     public int RequestTimeoutSeconds { get; set; } = 120;
     public int MaxRetry { get; set; } = 1;
     public int MaxConcurrentRequests { get; set; } = 8;
+    public bool DebugLogRequests { get; set; }
     public List<OpenCodeTargetItem> Targets { get; set; } = [];
 }
 

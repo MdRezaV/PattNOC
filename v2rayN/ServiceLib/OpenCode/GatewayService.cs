@@ -286,6 +286,13 @@ public sealed class GatewayService
                 }
             }
 
+            if (settings.DebugLogRequests)
+            {
+                Logging.SaveLog($"{Tag} <- client={clientFormat} model={modelRef} " +
+                    $"stream={request.Stream} stop={request.Stop?.Count ?? 0} " +
+                    $"messages={request.Messages.Count} tools={request.Tools?.Count ?? 0}");
+            }
+
             var result = await _executor.ExecuteAsync(request, settings, context.RequestAborted);
 
             if (!result.Success)

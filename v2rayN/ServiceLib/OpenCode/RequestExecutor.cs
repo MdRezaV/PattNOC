@@ -116,9 +116,20 @@ public sealed class RequestExecutor
             {
                 client = CreateClient(snapshot.WebProxy, settings.ConnectTimeoutSeconds);
                 var upstreamRequest = adapter.BuildRequest(wireRequest, target, apiKey, requestId);
+                if (settings.DebugLogRequests)
+                {
+                    await LogOutboundAsync(upstreamRequest, attempt, requestId, target, model, request, timeoutCts.Token);
+                }
+
                 using var sendCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token);
                 var response = await client.SendAsync(
                     upstreamRequest, HttpCompletionOption.ResponseHeadersRead, sendCts.Token);
+
+                if (settings.DebugLogRequests)
+                {
+                    Logging.SaveLog($"{Tag} <- status={(int)response.StatusCode} " +
+                        $"content-type={response.Content.Headers.ContentType} requestId={requestId}");
+                }
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -132,6 +143,12 @@ public sealed class RequestExecutor
                         // Body read is best-effort for classification.
                     }
 
+                    if (settings.DebugLogRequests)
+                    {
+                        Logging.SaveLog($"{Tag} <- status={(int)response.StatusCode} requestId={requestId} " +
+                            $"body: {TruncateForLog(body, 4000)}");
+                    }
+
                     var retryAfter = response.Headers.TryGetValues("Retry-After", out var raValues)
                         ? raValues.FirstOrDefault()
                         : null;
@@ -139,14 +156,14 @@ public sealed class RequestExecutor
                         (int)response.StatusCode, body, null, proxyUnavailable: false);
                     response.Dispose();
 
-                    // 403 FreeTierError: force session regeneration and retry once.
+                    // 403 FreeTierError: retry once. Every attempt re-runs BuildRequest, so
+                    // x-opencode-session / x-opencode-request already come out fresh.
                     if (!sessionRefreshed
                         && (int)response.StatusCode == 403
                         && body is not null
                         && body.Contains("FreeTierError", StringComparison.OrdinalIgnoreCase))
                     {
                         sessionRefreshed = true;
-                        Adapters.OpenCodeFreeTier.RegenerateSession();
                         _telemetry.RecordRetry();
                         continue;
                     }
@@ -210,6 +227,61 @@ public sealed class RequestExecutor
         }
 
         return lastResult;
+    }
+
+    private async Task LogOutboundAsync(
+        HttpRequestMessage msg,
+        int attempt,
+        string requestId,
+        OpenCodeTargetItem target,
+        OpenCodeModel model,
+        NormalizedCompletionRequest request,
+        CancellationToken ct)
+    {
+        string? body = null;
+        try
+        {
+            body = msg.Content is null ? null : await msg.Content.ReadAsStringAsync(ct);
+        }
+        catch
+        {
+            // Logging must never fail the request.
+        }
+
+        var headers = new List<string>();
+        foreach (var header in msg.Headers)
+        {
+            headers.Add($"{header.Key}: {string.Join(", ", header.Value)}");
+        }
+
+        if (msg.Content is not null)
+        {
+            foreach (var header in msg.Content.Headers)
+            {
+                headers.Add($"{header.Key}: {string.Join(", ", header.Value)}");
+            }
+        }
+
+        // Free-tier bodies can embed a full system prompt; keep the log bounded but
+        // large enough that two requests can still be diffed by eye.
+        Logging.SaveLog($"{Tag} -> attempt={attempt} requestId={requestId} " +
+            $"source={(request.Stream ? "stream" : "non-stream")} " +
+            $"target={target.Id} baseUrl={target.BaseUrl} " +
+            $"model={model.Id} style={model.ApiStyle} " +
+            $"freeTier={Adapters.OpenCodeFreeTier.IsFreeTierTarget(target)} " +
+            $"url={msg.Method} {msg.RequestUri}\n" +
+            $"headers: {string.Join("; ", headers)}\n" +
+            $"body: {TruncateForLog(body, 32000)}");
+    }
+
+    private static string? TruncateForLog(string? value, int max)
+    {
+        if (value.IsNullOrEmpty())
+        {
+            return value;
+        }
+
+        return value!.Length <= max ? value : value[..max] + $"…({value.Length} chars)";
     }
 
     private HttpClient CreateClient(IWebProxy? proxy, int connectTimeoutSeconds)
