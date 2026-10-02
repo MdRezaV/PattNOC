@@ -325,6 +325,7 @@ public class OpenCodeItem
 {
     public bool Enabled { get; set; }
     public bool GatewayEnabled { get; set; } = true;
+    public bool FreeOnly { get; set; }
     public string DefaultTarget { get; set; } = "opencode-free";
     public string DefaultModel { get; set; } = "big-pickle";
     public string GatewayHost { get; set; } = "127.0.0.1";

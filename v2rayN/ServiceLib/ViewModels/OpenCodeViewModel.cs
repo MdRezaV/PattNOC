@@ -161,7 +161,11 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
         this.WhenAnyValue(x => x.ModelFilter)
             .Subscribe(_ => ApplyModelFilterAndSort());
         this.WhenAnyValue(x => x.FilterFreeOnly)
-            .Subscribe(_ => ApplyModelFilterAndSort());
+            .Subscribe(_ =>
+            {
+                PersistSettings();
+                ApplyModelFilterAndSort();
+            });
         this.WhenAnyValue(x => x.ModelApiStyleFilterIndex)
             .Subscribe(_ => ApplyModelFilterAndSort());
         this.WhenAnyValue(x => x.ModelSortIndex)
@@ -176,6 +180,7 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
         var item = _config.OpenCodeItem!;
         Enabled = item.Enabled;
         GatewayEnabled = item.GatewayEnabled;
+        FilterFreeOnly = item.FreeOnly;
         DefaultTarget = item.DefaultTarget;
         DefaultModel = item.DefaultModel;
         GatewayHost = item.GatewayHost;
@@ -212,6 +217,7 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
             var item = _config.OpenCodeItem!;
             item.Enabled = Enabled;
             item.GatewayEnabled = GatewayEnabled;
+            item.FreeOnly = FilterFreeOnly;
             item.DefaultTarget = DefaultTarget;
             item.DefaultModel = DefaultModel;
             item.GatewayHost = GatewayHost;

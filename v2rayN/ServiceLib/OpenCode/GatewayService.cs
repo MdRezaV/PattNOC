@@ -145,6 +145,11 @@ public sealed class GatewayService
         var settings = _getSettings();
         var targetId = settings.DefaultTarget;
         var models = _catalog.GetModels(targetId);
+        if (settings.FreeOnly)
+        {
+            models = models.Where(m => m.IsFree).ToList();
+        }
+
         await WriteJson(context, 200, ClientFormat.WriteModels(models, targetId));
     }
 
@@ -152,7 +157,7 @@ public sealed class GatewayService
     {
         var settings = _getSettings();
         var (target, model) = _catalog.ResolveTargetModel(modelId, settings);
-        if (model is null || target is null)
+        if (model is null || target is null || (settings.FreeOnly && !model.IsFree))
         {
             await WriteError(context, 404, new OpenCodeError(
                 "not_found_error", $"Model '{modelId}' not found.", 404, null, "model_not_found"));

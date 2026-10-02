@@ -210,6 +210,55 @@ public class GatewayServiceTests
     }
 
     [Test]
+    public async Task Gateway_ListModels_FreeOnly_ExposesOnlyFreeModels()
+    {
+        var cachePath = Path.Combine(Path.GetTempPath(), $"oc_gw_freeonly_{Guid.NewGuid():N}.json");
+        var cache = new OpenCodeCatalogCache
+        {
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("big-pickle", "Big Pickle", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "default", IsFree: true),
+                    new OpenCodeModel("remote-paid", "Remote Paid", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote", IsFree: false),
+                ],
+            },
+        };
+        File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+
+        using var upstream = new MockUpstream(_ => Task.CompletedTask);
+        var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
+        settings.FreeOnly = true;
+        var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
+        var (gateway, _, client) = CreateGateway(settings, provider, cachePath);
+
+        try
+        {
+            client.BaseAddress = await StartGatewayAsync(gateway);
+
+            var resp = await client.GetAsync("/v1/models");
+            await resp.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
+            var body = await resp.Content.ReadAsStringAsync();
+            await body.Should().Contain("big-pickle");
+            await body.Should().NotContain("remote-paid");
+
+            var freeModel = await client.GetAsync("/v1/models/big-pickle");
+            await freeModel.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
+
+            var paidModel = await client.GetAsync("/v1/models/remote-paid");
+            await paidModel.StatusCode.Should().BeEqualTo(HttpStatusCode.NotFound);
+        }
+        finally
+        {
+            await gateway.StopAsync(TimeSpan.FromSeconds(2));
+            client.Dispose();
+            try { File.Delete(cachePath); } catch { }
+        }
+    }
+
+    [Test]
     public async Task Gateway_GetModel_Returns404_ForUnknownModel()
     {
         using var upstream = new MockUpstream(_ => Task.CompletedTask);
