@@ -29,7 +29,7 @@ public class NodeValidator
         return v.ToResult();
     }
 
-    // PattN: the ECH outbound is parsed strictly, because every read of a parsed object that repeats
+    // PattNOC: the ECH outbound is parsed strictly, because every read of a parsed object that repeats
     // a key throws; comments are allowed, as in the other JSON fields
     private static readonly JsonDocumentOptions EchOutboundDocumentOptions = new()
     {
@@ -38,7 +38,7 @@ public class NodeValidator
     };
 
     /// <summary>
-    ///     PattN: the ECH outbound applies where the editor shows it: TLS on the protocols Xray runs,
+    ///     PattNOC: the ECH outbound applies where the editor shows it: TLS on the protocols Xray runs,
     ///     apart from WireGuard, which has no TLS settings. Anywhere else it is kept, but neither
     ///     checked nor used.
     /// </summary>
@@ -50,7 +50,7 @@ public class NodeValidator
     }
 
     /// <summary>
-    ///     PattN: the ECH outbound is a whole Xray outbound that the ECH config query is sent through
+    ///     PattNOC: the ECH outbound is a whole Xray outbound that the ECH config query is sent through
     ///     (tlsSettings.echSockopt.dialerProxy), so it has to be a JSON object with a tag of its own,
     ///     and it only applies together with EchConfigList.
     /// </summary>
@@ -61,7 +61,7 @@ public class NodeValidator
     }
 
     /// <summary>
-    ///     PattN: <see cref="ValidateEchOutbound(ProfileItem)" />, also giving the parsed ECH outbound
+    ///     PattNOC: <see cref="ValidateEchOutbound(ProfileItem)" />, also giving the parsed ECH outbound
     ///     when it is set, applies, and is valid.
     /// </summary>
     public static string? ValidateEchOutbound(ProfileItem item, out JsonObject? echOutbound)
@@ -102,7 +102,7 @@ public class NodeValidator
     }
 
     /// <summary>
-    ///     PattN: the tag of an outbound written as JSON, read the way Xray reads it, where the last of
+    ///     PattNOC: the tag of an outbound written as JSON, read the way Xray reads it, where the last of
     ///     repeated keys wins. Reading a member of a parsed object that repeats a key would throw.
     /// </summary>
     public static string? GetOutboundTag(JsonObject outbound)
@@ -253,7 +253,7 @@ public class NodeValidator
             }
         }
 
-        // PattN: the checks made when an ECH outbound is saved, made again for imported profiles
+        // PattNOC: the checks made when an ECH outbound is saved, made again for imported profiles
         var echOutboundError = ValidateEchOutbound(item);
         if (echOutboundError != null)
         {

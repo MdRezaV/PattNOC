@@ -187,10 +187,10 @@ public class SemanticVersion : IEquatable<SemanticVersion>, IComparable
 
     private static int ComparePreRelease(string? left, string? right)
     {
-        // PattN: "-P<n>" marks a PattN revision on top of the upstream version, not a semver pre-release,
+        // PattNOC: "-P<n>" marks a PattNOC revision on top of the upstream version, not a semver pre-release,
         // so it ranks above the bare version (and above any real pre-release) and compares numerically
-        var leftRevision = GetPattNRevision(left);
-        var rightRevision = GetPattNRevision(right);
+        var leftRevision = GetPattNOCRevision(left);
+        var rightRevision = GetPattNOCRevision(right);
         if (leftRevision.HasValue || rightRevision.HasValue)
         {
             if (leftRevision.HasValue && rightRevision.HasValue)
@@ -247,7 +247,7 @@ public class SemanticVersion : IEquatable<SemanticVersion>, IComparable
         }
     }
 
-    private static int? GetPattNRevision(string? prerelease)
+    private static int? GetPattNOCRevision(string? prerelease)
     {
         if (prerelease is { Length: > 1 }
             && prerelease[0] == 'P'

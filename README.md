@@ -1,4 +1,4 @@
-# PattN
+# PattNOC
 
 v2rayN fork for Iranians
 

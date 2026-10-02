@@ -917,7 +917,7 @@ public class Utils
     {
         try
         {
-            // PattN builds are versioned "x.y.z-P<n>"; only the informational version keeps the suffix
+            // PattNOC builds are versioned "x.y.z-P<n>"; only the informational version keeps the suffix
             var infoVersion = Assembly.GetExecutingAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
             if (infoVersion.IsNotEmpty())
             {

@@ -275,7 +275,7 @@ public class FmtHandlerTests
     [Test]
     public async Task GetShareUriAndResolveConfig_Vless_ShouldRoundTripEchOutbound()
     {
-        // PattN: echOutbound travels next to ech as one-line JSON and is stored indented again, like fm.
+        // PattNOC: echOutbound travels next to ech as one-line JSON and is stored indented again, like fm.
         var source = CreateVlessProfile();
         source.StreamSecurity = Global.StreamSecurity;
         source.Sni = "vless.example";
@@ -312,7 +312,7 @@ public class FmtHandlerTests
     [Test]
     public async Task GetShareUriAndResolveConfig_Hysteria2_ShouldRoundTripFinalmask()
     {
-        // PattN: Hysteria2 links carry fm like the other links; it replaces the finalmask generated for Hysteria2.
+        // PattNOC: Hysteria2 links carry fm like the other links; it replaces the finalmask generated for Hysteria2.
         var source = CreateHysteria2Profile();
         source.Finalmask = """
             {

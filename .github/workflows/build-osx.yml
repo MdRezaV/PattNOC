@@ -54,7 +54,7 @@ jobs:
       uses: actions/download-artifact@v8
       with:
         name: ${{ matrix.arch }}
-        path: PattN-macos-${{ env.Arch }}
+        path: PattNOC-macos-${{ env.Arch }}
     
     - name: Setup create-dmg
       run: brew install create-dmg
@@ -63,13 +63,13 @@ jobs:
       run: chmod 755 package-osx.sh
 
     - name: Package dmg
-      run: ./package-osx.sh macos-$Arch PattN-macos-$Arch ${{ inputs.release_tag }}
+      run: ./package-osx.sh macos-$Arch PattNOC-macos-$Arch ${{ inputs.release_tag }}
 
     - name: Upload dmg artifact
       uses: actions/upload-artifact@v7
       with:
         name: release-dmg-${{ matrix.arch }}
-        path: PattN*.dmg
+        path: PattNOC*.dmg
         if-no-files-found: error
 
   release-dmg:

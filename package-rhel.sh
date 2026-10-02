@@ -236,7 +236,7 @@ resolve_version() {
   fi
 
   VERSION="${VERSION#v}"
-  # PattN tags look like 7.24.8-P1; RPM versions cannot contain '-'
+  # PattNOC tags look like 7.24.8-P1; RPM versions cannot contain '-'
   VERSION="${VERSION//-/.}"
   echo "[*] GUI version resolved as: ${VERSION}"
 }
@@ -283,7 +283,7 @@ download_xray() {
   mkdir -p "$outdir"
 
   if [[ -z "$ver" ]]; then
-    # PattN: resolve the latest tag from the release redirect (the anonymous GitHub API is rate-limited on CI runners)
+    # PattNOC: resolve the latest tag from the release redirect (the anonymous GitHub API is rate-limited on CI runners)
     ver="$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/patterniha/Xray-core/releases/latest | sed -E 's#.*/releases/tag/v##')" || true
     [[ "$ver" =~ ^[0-9] ]] || ver=""
   fi
@@ -453,9 +453,9 @@ stage_runtime_assets() {
 
   if [[ "$FORCE_NETCORE" -eq 0 ]]; then
     if populate_assets_zip_mode "$outroot" "$rid"; then
-      # PattN: the core-bin bundle ships upstream Xray; replace it with patterniha/Xray-core
-      download_xray "$outroot/bin/xray" "$rid" || { echo "[!] PattN: failed to fetch patterniha/Xray-core, aborting"; return 1; }
-      # PattN: replace bundled geo files with Chocolate4U + Iran rule-sets
+      # PattNOC: the core-bin bundle ships upstream Xray; replace it with patterniha/Xray-core
+      download_xray "$outroot/bin/xray" "$rid" || { echo "[!] PattNOC: failed to fetch patterniha/Xray-core, aborting"; return 1; }
+      # PattNOC: replace bundled geo files with Chocolate4U + Iran rule-sets
       download_geo_assets "$outroot" || echo "[!] Geo rules download failed (kept bundle defaults)"
       echo "[*] Using v2rayN bundle archive."
     else
@@ -499,10 +499,10 @@ write_spec_file() {
 Name:           v2rayN
 Version:        __VERSION__
 Release:        1%{?dist}
-Summary:        PattN (Avalonia) GUI client for Linux
+Summary:        PattNOC (Avalonia) GUI client for Linux
 License:        GPL-3.0-only
-URL:            https://github.com/patterniha/PattN
-BugURL:         https://github.com/patterniha/PattN/issues
+URL:            https://github.com/MdRezaV/PattNOC
+BugURL:         https://github.com/MdRezaV/PattNOC/issues
 ExclusiveArch:  aarch64 x86_64
 Source0:        __PKGROOT__.tar.gz
 
@@ -516,11 +516,11 @@ Requires:       bash >= 5.2.21
 Requires:       freetype >= 2.13
 
 %description
-PattN Linux for Red Hat Enterprise Linux
+PattNOC Linux for Red Hat Enterprise Linux
 Support vless / vmess / Trojan / http / socks / Anytls / Hysteria2 / Shadowsocks / tuic / WireGuard
 Support Red Hat Enterprise Linux / Fedora Linux / Rocky Linux / AlmaLinux / CentOS
 For more information, Please visit our website
-https://github.com/patterniha/PattN
+https://github.com/MdRezaV/PattNOC
 
 %prep
 %setup -q -n __PKGROOT__
@@ -533,7 +533,7 @@ cp -a * %{buildroot}/opt/v2rayN/
 
 find %{buildroot}/opt/v2rayN -type d -exec chmod 0755 {} +
 find %{buildroot}/opt/v2rayN -type f -exec chmod 0644 {} +
-[ -f %{buildroot}/opt/v2rayN/PattN ] && chmod 0755 %{buildroot}/opt/v2rayN/PattN || :
+[ -f %{buildroot}/opt/v2rayN/PattNOC ] && chmod 0755 %{buildroot}/opt/v2rayN/PattNOC || :
 
 install -dm0755 %{buildroot}%{_bindir}
 install -m0755 /dev/stdin %{buildroot}%{_bindir}/v2rayn << 'EOF'
@@ -541,13 +541,13 @@ install -m0755 /dev/stdin %{buildroot}%{_bindir}/v2rayn << 'EOF'
 set -euo pipefail
 DIR="/opt/v2rayN"
 
-if [[ -x "$DIR/PattN" ]]; then exec "$DIR/PattN" "$@"; fi
+if [[ -x "$DIR/PattNOC" ]]; then exec "$DIR/PattNOC" "$@"; fi
 
-for dll in PattN.dll; do
+for dll in PattNOC.dll; do
   if [[ -f "$DIR/$dll" ]]; then exec /usr/bin/dotnet "$DIR/$dll" "$@"; fi
 done
 
-echo "PattN launcher: no executable found in $DIR" >&2
+echo "PattNOC launcher: no executable found in $DIR" >&2
 ls -l "$DIR" >&2 || true
 exit 1
 EOF
@@ -556,11 +556,11 @@ install -dm0755 %{buildroot}%{_datadir}/applications
 install -m0644 /dev/stdin %{buildroot}%{_datadir}/applications/v2rayn.desktop << 'EOF'
 [Desktop Entry]
 Type=Application
-Name=PattN
-Comment=PattN for Red Hat Enterprise Linux
+Name=PattNOC
+Comment=PattNOC for Red Hat Enterprise Linux
 Exec=v2rayn
 Icon=v2rayn
-StartupWMClass=PattN
+StartupWMClass=PattNOC
 Terminal=false
 Categories=Network;
 EOF

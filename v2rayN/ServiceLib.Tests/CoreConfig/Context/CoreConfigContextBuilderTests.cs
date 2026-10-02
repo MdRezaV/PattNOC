@@ -90,7 +90,7 @@ public class CoreConfigContextBuilderTests
     [Arguments("""{"tag": "ech-out", "protocol": "wireguard", "settings": {"address": ["172.16.0.2/32"], "peers": [{"endpoint": "ech.example:2408"}, {"endpoint": "[2606:4700::1]:2408"}]}}""")]
     public async Task ResolveNodeAsync_EchOutboundServerDomain_ShouldBeProtected(string echOutbound)
     {
-        // PattN: the ECH config query goes through the ECH outbound, so the domain of its server has to
+        // PattNOC: the ECH config query goes through the ECH outbound, so the domain of its server has to
         // resolve directly, like the node's own address.
         var config = CoreConfigTestFactory.CreateConfig();
         CoreConfigTestFactory.BindAppManagerConfig(config);
@@ -115,7 +115,7 @@ public class CoreConfigContextBuilderTests
     [Arguments("cloudflare-ech.com+https://[2606:4700:4700::1111]/dns-query", "example.com,cloudflare-ech.com")]
     public async Task ResolveNodeAsync_EchDnsServerDomain_ShouldBeProtected(string echConfigList, string protectedDomains)
     {
-        // PattN: Xray resolves the domain of the DNS server that it sends the ECH config query to, so that
+        // PattNOC: Xray resolves the domain of the DNS server that it sends the ECH config query to, so that
         // domain has to resolve directly, like the node's own address. An IP needs no DNS.
         var config = CoreConfigTestFactory.CreateConfig();
         CoreConfigTestFactory.BindAppManagerConfig(config);
@@ -133,7 +133,7 @@ public class CoreConfigContextBuilderTests
     [Test]
     public async Task ResolveNodeAsync_EchDnsServerDomain_ShouldBeLeftToXray()
     {
-        // PattN: sing-box never dials the DNS server of echConfigList; it queries the name before the "+"
+        // PattNOC: sing-box never dials the DNS server of echConfigList; it queries the name before the "+"
         // through its own DNS, so only that name is protected.
         var config = CoreConfigTestFactory.CreateConfig(ECoreType.sing_box);
         CoreConfigTestFactory.BindAppManagerConfig(config);

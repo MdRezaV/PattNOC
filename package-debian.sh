@@ -309,7 +309,7 @@ download_xray() {
   mkdir -p "$outdir"
 
   if [[ -z "$ver" ]]; then
-    # PattN: resolve the latest tag from the release redirect (the anonymous GitHub API is rate-limited on CI runners)
+    # PattNOC: resolve the latest tag from the release redirect (the anonymous GitHub API is rate-limited on CI runners)
     ver="$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/patterniha/Xray-core/releases/latest | sed -E 's#.*/releases/tag/v##')" || true
     [[ "$ver" =~ ^[0-9] ]] || ver=""
   fi
@@ -479,9 +479,9 @@ stage_runtime_assets() {
 
   if [[ "$FORCE_NETCORE" -eq 0 ]]; then
     if populate_assets_zip_mode "$outroot" "$rid"; then
-      # PattN: the core-bin bundle ships upstream Xray; replace it with patterniha/Xray-core
-      download_xray "$outroot/bin/xray" "$rid" || { echo "[!] PattN: failed to fetch patterniha/Xray-core, aborting"; return 1; }
-      # PattN: replace bundled geo files with Chocolate4U + Iran rule-sets
+      # PattNOC: the core-bin bundle ships upstream Xray; replace it with patterniha/Xray-core
+      download_xray "$outroot/bin/xray" "$rid" || { echo "[!] PattNOC: failed to fetch patterniha/Xray-core, aborting"; return 1; }
+      # PattNOC: replace bundled geo files with Chocolate4U + Iran rule-sets
       download_geo_assets "$outroot" || echo "[!] Geo rules download failed (kept bundle defaults)"
       echo "[*] Using v2rayN bundle bin assets."
     else
@@ -522,17 +522,17 @@ set -euo pipefail
 DIR="/opt/v2rayN"
 cd "$DIR"
 
-if [[ -x "$DIR/PattN" ]]; then
-  exec "$DIR/PattN" "$@"
+if [[ -x "$DIR/PattNOC" ]]; then
+  exec "$DIR/PattNOC" "$@"
 fi
 
-for dll in PattN.dll; do
+for dll in PattNOC.dll; do
   if [[ -f "$DIR/$dll" ]]; then
     exec /usr/bin/dotnet "$DIR/$dll" "$@"
   fi
 done
 
-echo "PattN launcher: no executable found in $DIR" >&2
+echo "PattNOC launcher: no executable found in $DIR" >&2
 ls -l "$DIR" >&2 || true
 exit 1
 EOF
@@ -544,11 +544,11 @@ write_desktop_file() {
   install -m 644 /dev/stdin "$stage/usr/share/applications/v2rayn.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
-Name=PattN
-Comment=PattN for Debian GNU Linux
+Name=PattNOC
+Comment=PattNOC for Debian GNU Linux
 Exec=v2rayn
 Icon=v2rayn
-StartupWMClass=PattN
+StartupWMClass=PattNOC
 Terminal=false
 Categories=Network;
 EOF
@@ -629,7 +629,7 @@ Standards-Version: 4.7.0
 
 Package: v2rayn
 Architecture: ${deb_arch}
-Description: PattN
+Description: PattNOC
 EOF
 
   multiarch="$(dpkg-architecture -a"$deb_arch" -qDEB_HOST_MULTIARCH)"
@@ -671,18 +671,18 @@ Package: v2rayn
 Version: ${VERSION}
 Architecture: ${deb_arch}
 Maintainer: 2dust <noreply@github.com>
-Homepage: https://github.com/patterniha/PattN
+Homepage: https://github.com/MdRezaV/PattNOC
 Section: net
 Priority: optional
 Depends: ${final_depends}
-Description: PattN (Avalonia) GUI client for Linux
+Description: PattNOC (Avalonia) GUI client for Linux
  Support vless / vmess / Trojan / http / socks / Anytls / Hysteria2 /
  Shadowsocks / tuic / WireGuard.
 EOF
 
   find "$stage/opt/v2rayN" -type d -exec chmod 0755 {} +
   find "$stage/opt/v2rayN" -type f -exec chmod 0644 {} +
-  [[ -f "$stage/opt/v2rayN/PattN" ]] && chmod 0755 "$stage/opt/v2rayN/PattN" || true
+  [[ -f "$stage/opt/v2rayN/PattNOC" ]] && chmod 0755 "$stage/opt/v2rayN/PattNOC" || true
 
   deb_out="$OUTPUT_DIR/v2rayn_${VERSION}_${deb_arch}.deb"
   dpkg-deb --root-owner-group --build "$stage" "$deb_out"

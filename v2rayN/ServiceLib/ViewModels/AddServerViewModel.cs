@@ -396,7 +396,7 @@ public partial class AddServerViewModel : MyReactiveObject, ICloseable
             NoticeManager.Instance.Enqueue(ResUI.InvalidHttpOutboundHeaders);
             return;
         }
-        // PattN: the ECH outbound needs EchConfigList and a tag of its own
+        // PattNOC: the ECH outbound needs EchConfigList and a tag of its own
         var echOutboundError = NodeValidator.ValidateEchOutbound(SelectedSource);
         if (echOutboundError != null)
         {

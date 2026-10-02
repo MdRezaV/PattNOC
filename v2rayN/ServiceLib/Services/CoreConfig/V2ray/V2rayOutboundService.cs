@@ -59,7 +59,7 @@ public partial class CoreConfigV2rayService
             return outbound;
         }
         FillOutbound(outbound);
-        // PattN: per-profile targetStrategy, set on the outbound itself (not in sockopt)
+        // PattNOC: per-profile targetStrategy, set on the outbound itself (not in sockopt)
         outbound.targetStrategy = _node.GetTargetStrategy();
         outbound.tag = baseTagName;
         return outbound;
@@ -337,7 +337,7 @@ public partial class CoreConfigV2rayService
                     // For legacy xray compatibility, remove this in the future
                     tlsSettings.echForceQuery = "full";
                 }
-                // PattN: the ECH config query goes through the profile's ECH outbound, which is
+                // PattNOC: the ECH config query goes through the profile's ECH outbound, which is
                 // appended to the config after every other outbound (AppendEchOutbounds)
                 if (NodeValidator.ValidateEchOutbound(_node, out var echOutbound) == null && echOutbound != null)
                 {

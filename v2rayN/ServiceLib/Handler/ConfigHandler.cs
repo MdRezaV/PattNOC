@@ -116,7 +116,7 @@ public static class ConfigHandler
         config.ConstItem ??= new ConstItem();
         if (isNewConfig)
         {
-            // PattN: fresh installs default to the Iran regional preset sources (Chocolate4U)
+            // PattNOC: fresh installs default to the Iran regional preset sources (Chocolate4U)
             config.ConstItem.GeoSourceUrl = Global.GeoFilesSources[2];
             config.ConstItem.SrsSourceUrl = Global.SingboxRulesetSources[2];
             config.ConstItem.RouteRulesTemplateSourceUrl = Global.RoutingRulesSources[2];
@@ -124,7 +124,7 @@ public static class ConfigHandler
 
         config.SimpleDNSItem ??= InitBuiltinSimpleDNS();
         config.SimpleDNSItem.BlockAAAAQuery ??= false;
-        // PattN: FakeIP is on by default
+        // PattNOC: FakeIP is on by default
         config.SimpleDNSItem.FakeIP ??= true;
         config.SimpleDNSItem.GlobalFakeIp ??= true;
         config.SimpleDNSItem.BootstrapDNS ??= Global.DomainPureIPDNSAddress.FirstOrDefault();
@@ -2647,7 +2647,7 @@ public static class ConfigHandler
             item.Sort = ++maxSort;
             item.Url = string.Empty;
 
-            //PattN: the Iran template still ships what PattN removed from its Iran direct rule-set; clean it before storing
+            //PattNOC: the Iran template still ships what PattNOC removed from its Iran direct rule-set; clean it before storing
             if (item.Remarks == IranDirectRoutingRemarks)
             {
                 item.RuleSet = ruleSetsString;
@@ -2668,7 +2668,7 @@ public static class ConfigHandler
     }
 
     /// <summary>
-    /// PattN: rewrite the Iran direct-domain rule from "geosite:ir" (Chocolate4U only) to
+    /// PattNOC: rewrite the Iran direct-domain rule from "geosite:ir" (Chocolate4U only) to
     /// "domain:ir" + "geosite:category-ir" (present in every geosite source), as custom_routing_white_iran has now
     /// </summary>
     /// <param name="rules">Rules of the stored Iran routing</param>
@@ -2702,7 +2702,7 @@ public static class ConfigHandler
     }
 
     /// <summary>
-    /// PattN: remove the "port 0-65535 -> proxy" rule that custom_routing_white_iran used to end with. It matched every
+    /// PattNOC: remove the "port 0-65535 -> proxy" rule that custom_routing_white_iran used to end with. It matched every
     /// connection by its port before an IPIfNonMatch domain strategy could resolve the domain, so the Iran IP rule never
     /// applied to domains. What no rule matches still goes to the proxy without it: the first outbound, or the final
     /// balancer rule. A rule that was edited since is left alone.
@@ -2723,12 +2723,12 @@ public static class ConfigHandler
     }
 
     /// <summary>
-    /// PattN: name of the Iran direct rule-set, which the Iran template (Chocolate4U) imports under the same name
+    /// PattNOC: name of the Iran direct rule-set, which the Iran template (Chocolate4U) imports under the same name
     /// </summary>
     public const string IranDirectRoutingRemarks = "IR-ایران مستقیم، بقیه پراکسی";
 
     /// <summary>
-    /// PattN: clean an Iran direct rule-set of what custom_routing_white_iran no longer has and the Iran template
+    /// PattNOC: clean an Iran direct rule-set of what custom_routing_white_iran no longer has and the Iran template
     /// (Chocolate4U) still ships:
     /// the IPOnDemand domain strategy, which 7.24.8-P5 stored too, so that the default (AsIs) applies;
     /// the "8.8.8.8 -> direct" rule for domestic DNS, which the direct-dns routing rule covers now;
@@ -2762,8 +2762,8 @@ public static class ConfigHandler
     }
 
     /// <summary>
-    /// PattN: clean every Iran direct rule-set of items (see CleanIranDirectRouting), not only the first one: "Import Rules"
-    /// adds the one of the Iran template under the same name next to PattN's own
+    /// PattNOC: clean every Iran direct rule-set of items (see CleanIranDirectRouting), not only the first one: "Import Rules"
+    /// adds the one of the Iran template under the same name next to PattNOC's own
     /// </summary>
     /// <param name="items">Stored routing rule-sets</param>
     /// <returns>The rule-sets that changed, to be saved</returns>
@@ -2800,7 +2800,7 @@ public static class ConfigHandler
             items = await AppManager.Instance.RoutingItems();
         }
 
-        //PattN TODO Temporary code to be removed later: clean every Iran direct rule-set that an older release stored,
+        //PattNOC TODO Temporary code to be removed later: clean every Iran direct rule-set that an older release stored,
         //or that "Import Rules" took from the Iran template before it was cleaned on import (see CleanIranDirectRouting)
         foreach (var iranDirectItem in CleanIranDirectRoutings(items ?? []))
         {
@@ -2852,7 +2852,7 @@ public static class ConfigHandler
         };
         await AddBatchRoutingRules(item1, EmbedUtils.GetEmbedText(Global.CustomRoutingFileName + "global"));
 
-        //PattN: Iran direct (Chocolate4U), see https://github.com/Chocolate4U/Iran-v2ray-rules
+        //PattNOC: Iran direct (Chocolate4U), see https://github.com/Chocolate4U/Iran-v2ray-rules
         var item4 = new RoutingItem()
         {
             Remarks = IranDirectRoutingRemarks,
@@ -2861,7 +2861,7 @@ public static class ConfigHandler
         };
         await AddBatchRoutingRules(item4, EmbedUtils.GetEmbedText(Global.CustomRoutingFileName + "white_iran"));
 
-        //PattN: Iran global proxy
+        //PattNOC: Iran global proxy
         var item5 = new RoutingItem()
         {
             Remarks = "IR-پراکسی سراسری",
@@ -3020,7 +3020,7 @@ public static class ConfigHandler
         {
             UseSystemHosts = false,
             AddCommonHosts = true,
-            // PattN: FakeIP is on by default
+            // PattNOC: FakeIP is on by default
             FakeIP = true,
             GlobalFakeIp = true,
             BlockBindingQuery = true,
@@ -3110,7 +3110,7 @@ public static class ConfigHandler
     /// <returns>True if successful</returns>
     public static async Task<bool> ApplyRegionalPreset(Config config, EPresetType type)
     {
-        //PattN: a preset leaves the DNS settings as they are. Default and China used to reset them to the built-in ones,
+        //PattNOC: a preset leaves the DNS settings as they are. Default and China used to reset them to the built-in ones,
         //and Russia and Iran to replace them with the region's DNS templates, or, when the simple DNS template could not
         //be downloaded, to enable custom DNS in both the Xray and the sing-box settings
         switch (type)

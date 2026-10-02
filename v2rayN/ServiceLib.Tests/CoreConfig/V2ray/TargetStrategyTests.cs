@@ -3,7 +3,7 @@ using ServiceLib.Services.CoreConfig;
 namespace ServiceLib.Tests.CoreConfig.V2ray;
 
 /// <summary>
-/// PattN: per-profile Xray outbound targetStrategy. It is written on the outbound itself, only when it
+/// PattNOC: per-profile Xray outbound targetStrategy. It is written on the outbound itself, only when it
 /// differs from the default (AsIs), it wins over the global "Proxy Target Resolution Strategy", and it
 /// never travels in share links.
 /// </summary>

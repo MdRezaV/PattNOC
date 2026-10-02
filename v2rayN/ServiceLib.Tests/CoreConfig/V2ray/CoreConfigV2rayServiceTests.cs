@@ -43,7 +43,7 @@ public class CoreConfigV2rayServiceTests
         await outbound.settings.port.Should().BeEqualTo(8080);
         await outbound.settings.user.Should().BeEqualTo("user");
         await outbound.settings.pass.Should().BeEqualTo("pass");
-        // PattN removes user levels from outbounds; all sessions run at level 0 (policy "0")
+        // PattNOC removes user levels from outbounds; all sessions run at level 0 (policy "0")
         await outbound.settings.level.Should().BeNull();
         await outbound.settings.headers.Should().NotBeNull();
         var headers = JsonUtils.ParseJson(outbound.settings.headers!.ToString());
@@ -657,7 +657,7 @@ public class CoreConfigV2rayServiceTests
         var result = new CoreConfigV2rayService(context).GenerateClientConfigContent();
 
         await result.Success.Should().BeTrue();
-        // PattN: no "fakedns" block, so Xray-core applies its default fake IP pools
+        // PattNOC: no "fakedns" block, so Xray-core applies its default fake IP pools
         var root = JsonUtils.ParseJson(result.Data!.ToString())!.AsObject();
         await root.ContainsKey("fakedns").Should().BeFalse();
 

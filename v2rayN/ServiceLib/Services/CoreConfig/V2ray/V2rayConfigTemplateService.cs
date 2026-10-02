@@ -13,7 +13,7 @@ public partial class CoreConfigV2rayService
     }
 
     /// <summary>
-    ///     PattN: registers the ECH outbound of the profile being built and returns the tag that its
+    ///     PattNOC: registers the ECH outbound of the profile being built and returns the tag that its
     ///     echSockopt points at. Profiles with the same ECH outbound share it. A different ECH outbound
     ///     under a tag that an earlier one has gets a numbered tag of its own ("ech-2"): the tag only
     ///     links a proxy outbound to its ECH outbound, and a group or a speed test puts unrelated
@@ -37,7 +37,7 @@ public partial class CoreConfigV2rayService
     }
 
     /// <summary>
-    ///     PattN: appends the ECH outbounds of the profiles after every other outbound, exactly as the
+    ///     PattNOC: appends the ECH outbounds of the profiles after every other outbound, exactly as the
     ///     user wrote them rather than through the typed model, which would drop fields it does not know.
     ///     A tag the user wrote that another outbound of the config already has fails the config instead
     ///     of sending the ECH config query through that outbound. A numbered tag ("ech-2") that one has
@@ -103,7 +103,7 @@ public partial class CoreConfigV2rayService
     }
 
     /// <summary>
-    ///     PattN: points the echSockopt of the generated outbounds that use a renumbered ECH tag at its
+    ///     PattNOC: points the echSockopt of the generated outbounds that use a renumbered ECH tag at its
     ///     new number. Other outbounds keep theirs: the old number is the tag of one of them.
     /// </summary>
     private void RelinkEchSockopts(JsonArray outboundsNode, Dictionary<string, string> renumbered)
@@ -340,7 +340,7 @@ public partial class CoreConfigV2rayService
     }
 
     /// <summary>
-    /// PattN global first-hop proxy: injects the app-upstream outbound and detours
+    /// PattNOC global first-hop proxy: injects the app-upstream outbound and detours
     /// non-private proxy outbounds through it. Runs LAST, after ProxyDetour and ECH,
     /// so existing dialerProxy values are preserved.
     /// </summary>

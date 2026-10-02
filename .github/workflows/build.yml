@@ -10,7 +10,7 @@ on:
         required: false
         type: string
         default: './v2rayN.Desktop/v2rayN.Desktop.csproj'
-      version: # PattN: release tag used as the app version (x.y.z-P<n>); empty keeps Directory.Build.props
+      version: # PattNOC: release tag used as the app version (x.y.z-P<n>); empty keeps Directory.Build.props
         required: false
         type: string
         default: ''
