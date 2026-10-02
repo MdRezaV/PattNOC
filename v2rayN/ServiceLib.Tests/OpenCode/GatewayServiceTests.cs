@@ -284,6 +284,101 @@ public class GatewayServiceTests
     }
 
     [Test]
+    public async Task Gateway_ClaudeAlias_ListModels_PrefixesIds()
+    {
+        using var upstream = new MockUpstream(ctx => WriteJsonAsync(ctx, 200, """{"data":[{"id":"big-pickle"}]}"""));
+        var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
+        var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
+        var (gateway, _, client) = CreateGateway(settings, provider);
+
+        try
+        {
+            client.BaseAddress = await StartGatewayAsync(gateway);
+
+            var resp = await client.GetAsync("/v1/claude/models");
+            await resp.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
+            var body = await resp.Content.ReadAsStringAsync();
+            await body.Should().Contain("claude-big-pickle");
+        }
+        finally
+        {
+            await gateway.StopAsync(TimeSpan.FromSeconds(2));
+            client.Dispose();
+        }
+    }
+
+    [Test]
+    public async Task Gateway_ClaudeAlias_GetModel_StripsPrefixForLookup_ReturnsPrefixedId()
+    {
+        using var upstream = new MockUpstream(_ => Task.CompletedTask);
+        var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
+        var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
+        var (gateway, _, client) = CreateGateway(settings, provider);
+
+        try
+        {
+            client.BaseAddress = await StartGatewayAsync(gateway);
+
+            var resp = await client.GetAsync("/v1/claude/models/claude-big-pickle");
+            await resp.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
+            var body = await resp.Content.ReadAsStringAsync();
+            await body.Should().Contain("\"id\":\"claude-big-pickle\"");
+
+            var missing = await client.GetAsync("/v1/claude/models/claude-does-not-exist");
+            await missing.StatusCode.Should().BeEqualTo(HttpStatusCode.NotFound);
+        }
+        finally
+        {
+            await gateway.StopAsync(TimeSpan.FromSeconds(2));
+            client.Dispose();
+        }
+    }
+
+    [Test]
+    public async Task Gateway_ClaudeAlias_ChatCompletions_StripsPrefixForUpstream_EchoesPrefixedModel()
+    {
+        string? upstreamModel = null;
+        using var upstream = new MockUpstream(async ctx =>
+        {
+            using var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8);
+            var reqBody = await reader.ReadToEndAsync();
+            try
+            {
+                using var doc = JsonDocument.Parse(reqBody);
+                upstreamModel = doc.RootElement.GetProperty("model").GetString();
+            }
+            catch
+            {
+                // Best-effort capture; failure surfaces via assertions below.
+            }
+
+            await WriteJsonAsync(ctx, 200, ChatOkBody());
+        });
+        var settings = Settings($"http://{Global.Loopback}:{upstream.Port}/v1");
+        var provider = new StubProxyProvider { Snapshot = DirectSnapshot() };
+        var (gateway, _, client) = CreateGateway(settings, provider);
+
+        try
+        {
+            client.BaseAddress = await StartGatewayAsync(gateway);
+
+            var resp = await client.PostAsync("/v1/claude/chat/completions",
+                new StringContent(ChatBody("claude-big-pickle"), Encoding.UTF8, "application/json"));
+
+            await resp.StatusCode.Should().BeEqualTo(HttpStatusCode.OK);
+            await upstreamModel.Should().BeEqualTo("big-pickle");
+            var body = await resp.Content.ReadAsStringAsync();
+            await body.Should().Contain("OK");
+            await body.Should().Contain("\"model\":\"claude-big-pickle\"");
+        }
+        finally
+        {
+            await gateway.StopAsync(TimeSpan.FromSeconds(2));
+            client.Dispose();
+        }
+    }
+
+    [Test]
     public async Task Gateway_ChatCompletions_NonStream_ReturnsMaterializedResponse()
     {
         using var upstream = new MockUpstream(ctx => WriteJsonAsync(ctx, 200, ChatOkBody()));

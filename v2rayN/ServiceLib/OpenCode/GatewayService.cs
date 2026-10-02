@@ -68,10 +68,14 @@ public sealed class GatewayService
             var app = builder.Build();
             _concurrency = new SemaphoreSlim(Math.Max(1, settings.MaxConcurrentRequests));
 
-            app.MapGet("/v1/models", HandleListModels);
-            app.MapGet("/v1/models/{modelId}", HandleGetModel);
-            app.MapPost("/v1/chat/completions", HandleChatCompletions);
-            app.MapPost("/v1/responses", HandleResponses);
+            app.MapGet("/v1/models", ctx => HandleListModels(ctx, claudeAlias: false));
+            app.MapGet("/v1/claude/models", ctx => HandleListModels(ctx, claudeAlias: true));
+            app.MapGet("/v1/models/{modelId}", (HttpContext ctx, string modelId) => HandleGetModel(ctx, modelId, claudeAlias: false));
+            app.MapGet("/v1/claude/models/{modelId}", (HttpContext ctx, string modelId) => HandleGetModel(ctx, modelId, claudeAlias: true));
+            app.MapPost("/v1/chat/completions", ctx => HandleCompletion(ctx, "chat", claudeAlias: false));
+            app.MapPost("/v1/claude/chat/completions", ctx => HandleCompletion(ctx, "chat", claudeAlias: true));
+            app.MapPost("/v1/responses", ctx => HandleCompletion(ctx, "responses", claudeAlias: false));
+            app.MapPost("/v1/claude/responses", ctx => HandleCompletion(ctx, "responses", claudeAlias: true));
 
             await app.StartAsync(ct);
 
@@ -84,7 +88,7 @@ public sealed class GatewayService
             }
 
             _app = app;
-            Logging.SaveLog($"{Tag} started on http://{host}:{_boundPort}/v1");
+            Logging.SaveLog($"{Tag} started on http://{host}:{_boundPort}/v1 (claude alias: /v1/claude)");
             return true;
         }
         catch (Exception ex)
@@ -140,7 +144,37 @@ public sealed class GatewayService
         }
     }
 
-    private async Task HandleListModels(HttpContext context)
+    private const string ClaudeModelPrefix = "claude-";
+
+    private static string ApplyClaudePrefix(string modelId) =>
+        modelId.StartsWith(ClaudeModelPrefix, StringComparison.OrdinalIgnoreCase)
+            ? modelId
+            : ClaudeModelPrefix + modelId;
+
+    private static string StripClaudePrefix(string modelRef)
+    {
+        if (modelRef.IsNullOrEmpty())
+        {
+            return modelRef;
+        }
+
+        // modelRef may be "model" or "target/model"; strip only from the model part.
+        var slash = modelRef.IndexOf('/');
+        if (slash > 0 && slash < modelRef.Length - 1)
+        {
+            var targetPart = modelRef[..(slash + 1)];
+            var modelPart = modelRef[(slash + 1)..];
+            return modelPart.StartsWith(ClaudeModelPrefix, StringComparison.OrdinalIgnoreCase)
+                ? targetPart + modelPart[ClaudeModelPrefix.Length..]
+                : modelRef;
+        }
+
+        return modelRef.StartsWith(ClaudeModelPrefix, StringComparison.OrdinalIgnoreCase)
+            ? modelRef[ClaudeModelPrefix.Length..]
+            : modelRef;
+    }
+
+    private async Task HandleListModels(HttpContext context, bool claudeAlias)
     {
         var settings = _getSettings();
         var targetId = settings.DefaultTarget;
@@ -150,13 +184,19 @@ public sealed class GatewayService
             models = models.Where(m => m.IsFree).ToList();
         }
 
+        if (claudeAlias)
+        {
+            models = models.Select(m => m with { Id = ApplyClaudePrefix(m.Id) }).ToList();
+        }
+
         await WriteJson(context, 200, ClientFormat.WriteModels(models, targetId));
     }
 
-    private async Task HandleGetModel(HttpContext context, string modelId)
+    private async Task HandleGetModel(HttpContext context, string modelId, bool claudeAlias)
     {
         var settings = _getSettings();
-        var (target, model) = _catalog.ResolveTargetModel(modelId, settings);
+        var lookupId = claudeAlias ? StripClaudePrefix(modelId) : modelId;
+        var (target, model) = _catalog.ResolveTargetModel(lookupId, settings);
         if (model is null || target is null || (settings.FreeOnly && !model.IsFree))
         {
             await WriteError(context, 404, new OpenCodeError(
@@ -164,16 +204,15 @@ public sealed class GatewayService
             return;
         }
 
+        if (claudeAlias)
+        {
+            model = model with { Id = ApplyClaudePrefix(model.Id) };
+        }
+
         await WriteJson(context, 200, ClientFormat.WriteModel(model, target.Id));
     }
 
-    private Task HandleChatCompletions(HttpContext context) =>
-        HandleCompletion(context, clientFormat: "chat");
-
-    private Task HandleResponses(HttpContext context) =>
-        HandleCompletion(context, clientFormat: "responses");
-
-    private async Task HandleCompletion(HttpContext context, string clientFormat)
+    private async Task HandleCompletion(HttpContext context, string clientFormat, bool claudeAlias)
     {
         var requestId = Guid.NewGuid().ToString("N")[..12];
         context.Response.Headers["x-opencode-request-id"] = requestId;
@@ -220,7 +259,16 @@ public sealed class GatewayService
                 return;
             }
 
+            // Claude alias clients send "claude-x"; resolve/execute against the real "x"
+            // but echo the claude-prefixed name back so the client's model list stays consistent.
             var modelRef = request.Model.IsNullOrEmpty() ? settings.DefaultModel : request.Model;
+            if (claudeAlias)
+            {
+                request = request with { Model = StripClaudePrefix(request.Model) };
+                modelRef = ApplyClaudePrefix(
+                    request.Model.IsNullOrEmpty() ? settings.DefaultModel : request.Model);
+            }
+
             var result = await _executor.ExecuteAsync(request, settings, context.RequestAborted);
 
             if (!result.Success)

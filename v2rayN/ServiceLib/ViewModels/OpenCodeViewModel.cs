@@ -200,6 +200,7 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
 
         ClientExampleText =
             $"Base URL: http://{item.GatewayHost}:{item.GatewayPort}/v1\n" +
+            $"Claude alias: http://{item.GatewayHost}:{item.GatewayPort}/v1/claude\n" +
             $"Model: {item.DefaultModel}";
     }
 
@@ -241,6 +242,7 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
 
             ClientExampleText =
                 $"Base URL: http://{item.GatewayHost}:{item.GatewayPort}/v1\n" +
+                $"Claude alias: http://{item.GatewayHost}:{item.GatewayPort}/v1/claude\n" +
                 $"Model: {item.DefaultModel}";
         }
         catch (Exception ex)
