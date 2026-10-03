@@ -572,4 +572,85 @@ public class ChatCompletionsAdapterTests
         await usage!.PromptTokens.Should().BeEqualTo(3);
         await usage.CompletionTokens.Should().BeEqualTo(1);
     }
+
+    [Test]
+    public async Task BuildRequest_WithApiKey_PreservesClientToolsAndSampling()
+    {
+        // Body shaping exists to satisfy the unauthenticated free tier. A keyed
+        // target must keep the caller's tools or agents can never invoke them.
+        var req = Request(stream: true) with
+        {
+            Temperature = 0.7,
+            MaxTokens = 32000,
+            Tools =
+            [
+                new NormalizedTool
+                {
+                    Function = new NormalizedFunctionDef { Name = "get_weather" },
+                },
+            ],
+        };
+
+        var adapter = new ChatCompletionsAdapter();
+        using var msg = adapter.BuildRequest(req, Target(), "sk-test-123", "req1");
+
+        var json = await msg.Content!.ReadAsStringAsync();
+        await json.Should().Contain("\"name\":\"get_weather\"");
+        await json.Should().Contain("\"temperature\":0.7");
+        await json.Should().Contain("\"max_tokens\":32000");
+        await json.Should().NotContain("\"name\":\"bash\"");
+        await json.Should().NotContain("\"tool_choice\"");
+    }
+
+    [Test]
+    public async Task MaterializeAsync_EventStream_AggregatesTextChunks()
+    {
+        // Upstream always streams (both adapters force stream=true), so a
+        // non-streaming client is answered from SSE rather than a JSON body.
+        var sse = string.Join("\n",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}",
+            "",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"lo\"},\"finish_reason\":\"stop\"}]}",
+            "",
+            "data: [DONE]",
+            "");
+        var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new StringContent(sse, Encoding.UTF8, "text/event-stream"),
+        };
+        var adapter = new ChatCompletionsAdapter();
+
+        var result = await adapter.MaterializeAsync(response, CancellationToken.None);
+
+        await result.Content.Should().BeEqualTo("Hello");
+        await result.FinishReason.Should().BeEqualTo("stop");
+    }
+
+    [Test]
+    public async Task MaterializeAsync_EventStream_AggregatesToolCallChunks()
+    {
+        var sse = string.Join("\n",
+            "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"id\":\"call_1\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"\"}}]}}]}",
+            "",
+            "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"id\":\"call_1\",\"function\":{\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\"}}]}}]}",
+            "",
+            "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}",
+            "",
+            "data: [DONE]",
+            "");
+        var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new StringContent(sse, Encoding.UTF8, "text/event-stream"),
+        };
+        var adapter = new ChatCompletionsAdapter();
+
+        var result = await adapter.MaterializeAsync(response, CancellationToken.None);
+
+        await result.ToolCalls.Should().NotBeNull();
+        await result.ToolCalls!.Count.Should().BeEqualTo(1);
+        await result.ToolCalls[0].Id.Should().BeEqualTo("call_1");
+        await result.ToolCalls[0].Function!.Name.Should().BeEqualTo("get_weather");
+        await result.ToolCalls[0].Function!.Arguments.Should().BeEqualTo("{\"city\":\"Paris\"}");
+        await result.FinishReason.Should().BeEqualTo("tool_calls");
+    }
 }

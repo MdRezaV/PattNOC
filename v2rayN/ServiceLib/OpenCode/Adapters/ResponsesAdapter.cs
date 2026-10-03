@@ -17,7 +17,8 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
         string requestId)
     {
         var body = BuildBody(req);
-        if (OpenCodeFreeTier.IsFreeTierTarget(target))
+        // See ChatCompletionsAdapter: body shaping applies to free-tier only.
+        if (apiKey.IsNullOrEmpty() && OpenCodeFreeTier.IsFreeTierTarget(target))
         {
             OpenCodeFreeTier.ApplyBodyShape(body, Style);
         }
@@ -37,6 +38,11 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
     {
         using var reader = new StreamReader(await response.Content.ReadAsStreamAsync(ct));
         string? currentEvent = null;
+        // output_item.done repeats call_id/name and the full arguments. When the
+        // block was already opened (added) or arguments already streamed (delta),
+        // re-emitting them would open a duplicate tool_use block downstream.
+        var openedCalls = new HashSet<string>();
+        var streamedArgCalls = new HashSet<string>();
 
         while (await reader.ReadLineAsync(ct) is { } line)
         {
@@ -91,6 +97,7 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
                         var name = item.TryGetProperty("name", out var nm) && nm.ValueKind == JsonValueKind.String
                             ? nm.GetString()
                             : null;
+                        openedCalls.Add(callId ?? "");
                         yield return new NormalizedStreamEvent(
                             NormalizedStreamEventType.ToolCallDelta,
                             ToolCallId: callId,
@@ -108,6 +115,7 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
                         var callId = root.TryGetProperty("call_id", out var ac) && ac.ValueKind == JsonValueKind.String
                             ? ac.GetString()
                             : null;
+                        streamedArgCalls.Add(callId ?? "");
                         yield return new NormalizedStreamEvent(
                             NormalizedStreamEventType.ToolCallDelta,
                             ToolCallId: callId,
@@ -130,11 +138,27 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
                         var args = doneItem.TryGetProperty("arguments", out var da) && da.ValueKind == JsonValueKind.String
                             ? da.GetString()
                             : null;
-                        yield return new NormalizedStreamEvent(
-                            NormalizedStreamEventType.ToolCallDelta,
-                            ToolCallId: callId,
-                            ToolName: name,
-                            ArgumentsDelta: args);
+                        var key = callId ?? "";
+                        if (openedCalls.Contains(key) || streamedArgCalls.Contains(key))
+                        {
+                            // Block already open: backfill arguments only when no
+                            // delta events delivered them; never re-send the name.
+                            if (!streamedArgCalls.Contains(key) && args.IsNotEmpty())
+                            {
+                                yield return new NormalizedStreamEvent(
+                                    NormalizedStreamEventType.ToolCallDelta,
+                                    ToolCallId: callId,
+                                    ArgumentsDelta: args);
+                            }
+                        }
+                        else
+                        {
+                            yield return new NormalizedStreamEvent(
+                                NormalizedStreamEventType.ToolCallDelta,
+                                ToolCallId: callId,
+                                ToolName: name,
+                                ArgumentsDelta: args);
+                        }
                     }
                     break;
 
@@ -198,6 +222,11 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
         HttpResponseMessage response,
         CancellationToken ct)
     {
+        if (StreamAggregator.IsEventStream(response))
+        {
+            return await StreamAggregator.AggregateAsync(TranslateStreamAsync(response, ct), ct);
+        }
+
         var body = await response.Content.ReadAsStringAsync(ct);
         using var doc = JsonDocument.Parse(body);
         var root = doc.RootElement;

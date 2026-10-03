@@ -21,7 +21,10 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
         string requestId)
     {
         var body = BuildBody(req);
-        if (OpenCodeFreeTier.IsFreeTierTarget(target))
+        // Body shaping is a free-tier (unauthenticated) behavior only. A keyed
+        // target must keep the caller's real tools, tool_choice, and sampling
+        // fields or agents like Claude Code can never invoke their own tools.
+        if (apiKey.IsNullOrEmpty() && OpenCodeFreeTier.IsFreeTierTarget(target))
         {
             OpenCodeFreeTier.ApplyBodyShape(body, Style);
         }
@@ -139,6 +142,11 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
         HttpResponseMessage response,
         CancellationToken ct)
     {
+        if (StreamAggregator.IsEventStream(response))
+        {
+            return await StreamAggregator.AggregateAsync(TranslateStreamAsync(response, ct), ct);
+        }
+
         var body = await response.Content.ReadAsStringAsync(ct);
         using var doc = JsonDocument.Parse(body);
         var root = doc.RootElement;
