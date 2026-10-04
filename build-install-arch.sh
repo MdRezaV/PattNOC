@@ -15,7 +15,6 @@ cd "$SCRIPT_DIR"
 PROJECT="v2rayN/v2rayN.Desktop/v2rayN.Desktop.csproj"
 DEST="${PATTNOC_DIR:-$HOME/.local/share/PattNOC}"
 DESKTOP_FILE="$HOME/.local/share/applications/pattnoc.desktop"
-ICON_DST="$HOME/.local/share/icons/hicolor/256x256/apps/pattnoc.png"
 
 # Runtime data written by the app — never touched on update.
 DATA_DIRS=(bin binConfigs guiConfigs guiLogs guiTemps)
@@ -50,6 +49,8 @@ done
 # --- environment checks -------------------------------------------------
 command -v dotnet >/dev/null 2>&1 ||
   die "dotnet SDK not found. On Arch: sudo pacman -S dotnet-sdk"
+command -v rsync >/dev/null 2>&1 ||
+  die "rsync not found. On Arch: sudo pacman -S rsync"
 
 case "$(uname -m)" in
   x86_64)  : "${RID:=linux-x64}" ;;
@@ -165,7 +166,7 @@ if [[ "$UPDATE_CORES" -eq 1 ]]; then
 fi
 
 # --- desktop entry + icon ----------------------------------------------
-mkdir -p "$(dirname "$DESKTOP_FILE")" "$(dirname "$ICON_DST")"
+mkdir -p "$(dirname "$DESKTOP_FILE")"
 
 cat > "$DESKTOP_FILE" <<EOF
 [Desktop Entry]
@@ -183,12 +184,34 @@ StartupWMClass=PattNOC
 Categories=Network;
 Keywords=v2ray;xray;sing-box;proxy;vpn;clash;PattNOC;
 EOF
+chmod 644 "$DESKTOP_FILE"
 
-cp -f "$SCRIPT_DIR/v2rayN/v2rayN.Desktop/v2rayN.png" "$ICON_DST"
-command -v update-desktop-database >/dev/null &&
+SRC_ICON="$SCRIPT_DIR/v2rayN/v2rayN.Desktop/v2rayN.png"
+if [[ -f "$SRC_ICON" ]]; then
+  # Install at several sizes: some DEs/docks ignore 256x256-only icons.
+  for s in 16 24 32 48 64 128 256; do
+    d="$HOME/.local/share/icons/hicolor/${s}x${s}/apps"
+    mkdir -p "$d"
+    cp -f "$SRC_ICON" "$d/pattnoc.png"
+  done
+  # Fallback location picked up without any icon cache.
+  mkdir -p "$HOME/.local/share/pixmaps"
+  cp -f "$SRC_ICON" "$HOME/.local/share/pixmaps/pattnoc.png"
+else
+  warn "source icon missing: $SRC_ICON — menu icon will be blank"
+fi
+if command -v update-desktop-database >/dev/null; then
   update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
-command -v gtk-update-icon-cache >/dev/null &&
+else
+  warn "update-desktop-database not found (pacman -S desktop-file-utils); menu icon may not appear until relogin"
+fi
+if command -v gtk-update-icon-cache >/dev/null; then
   gtk-update-icon-cache -f "$HOME/.local/share/icons/hicolor" >/dev/null 2>&1 || true
+else
+  warn "gtk-update-icon-cache not found (pacman -S gtk-update-icon-cache); menu icon may not appear until relogin"
+fi
+command -v kbuildsycoca6 >/dev/null &&
+  kbuildsycoca6 >/dev/null 2>&1 || true
 
 # --- launch -------------------------------------------------------------
 should_launch=0
