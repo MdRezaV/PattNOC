@@ -76,11 +76,19 @@ dotnet publish "$PROJECT" \
   -c Release -r "$RID" \
   -p:SelfContained=true \
   -p:PublishSingleFile=true \
+  -p:IncludeNativeLibrariesForSelfExtract=true \
   ${VERSION:+-p:Version="$VERSION"}
 
 PUB="v2rayN/v2rayN.Desktop/bin/Release/net10.0/${RID}/publish"
 [[ -f "$PUB/PattNOC" ]] || die "Publish output not found: $PUB/PattNOC"
 chmod +x "$PUB/PattNOC"
+
+# Without IncludeNativeLibrariesForSelfExtract the SDK drops libe_sqlite3.so and friends
+# from both the bundle and the publish dir, and the app dies with DllNotFoundException.
+if [[ ! -f "$PUB/libe_sqlite3.so" ]] &&
+   ! grep -aq "database disk image is malformed" "$PUB/PattNOC"; then
+  die "Native libs are missing from the bundle. Re-run with --clean."
+fi
 log "Build OK: $PUB/PattNOC"
 
 [[ "$BUILD_ONLY" -eq 1 ]] && { echo "[*] --build-only: skipping install."; exit 0; }
