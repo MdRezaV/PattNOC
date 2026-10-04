@@ -309,9 +309,9 @@ public partial class ProfilesViewModel : MyReactiveObject
         {
             item.IpInfo = result.IpInfo ?? string.Empty;
         }
-        if (result.OpenCode.IsNotEmpty())
+        if (result.OpenCode is not null)
         {
-            item.OpenCodeVal = result.OpenCode ?? string.Empty;
+            item.OpenCodeVal = result.OpenCode;
         }
         await Task.CompletedTask;
     }

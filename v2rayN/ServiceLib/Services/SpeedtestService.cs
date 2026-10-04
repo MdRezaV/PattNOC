@@ -200,7 +200,8 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                     break;
 
                 case ESpeedActionType.OpenCodetest:
-                    await UpdateOpenCodeFunc(it.IndexId, message);
+                    await UpdateOpenCodeFunc(it.IndexId,
+                        OpenCodeColumnStatus.AllNotTested(GetOpenCodeTestModels().Count));
                     break;
             }
         }
@@ -508,9 +509,10 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                 processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(lst);
                 if (processService is null)
                 {
+                    var notTested = OpenCodeColumnStatus.AllNotTested(GetOpenCodeTestModels().Count);
                     foreach (var it in lst)
                     {
-                        await UpdateOpenCodeFunc(it.IndexId, ResUI.OpenCodeColConnectionFailed);
+                        await UpdateOpenCodeFunc(it.IndexId, notTested);
                         completedIds.TryAdd(it.IndexId, 0);
                     }
                     continue;
@@ -528,7 +530,8 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                 {
                     if (!it.AllowTest)
                     {
-                        await UpdateOpenCodeFunc(it.IndexId, ResUI.SpeedtestingSkip);
+                        await UpdateOpenCodeFunc(it.IndexId,
+                            OpenCodeColumnStatus.AllNotTested(GetOpenCodeTestModels().Count));
                         completedIds.TryAdd(it.IndexId, 0);
                         return;
                     }
@@ -544,6 +547,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                     catch (Exception ex)
                     {
                         Logging.SaveLog(_tag, ex);
+                        completedIds.TryAdd(it.IndexId, 0);
                     }
                 });
             }
@@ -570,15 +574,57 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
     private async Task DoOpenCodeTest(ServerTestItem it,
         ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
     {
+        var models = GetOpenCodeTestModels();
+        var boxes = models.Select(_ => OpenCodeColumnStatus.NotTestedBox).ToList();
+
+        async Task PublishAsync()
+        {
+            var message = string.Concat(boxes);
+            ProfileExManager.Instance.SetTestOpenCode(it.IndexId, message);
+            await UpdateOpenCodeFunc(it.IndexId, message);
+        }
+
+        await PublishAsync();
+
         var webProxy = new WebProxy($"socks5://{Global.Loopback}:{it.Port}");
-        var result = await OpenCodeManager.Instance.TestConnectionThroughProxyAsync(
-            webProxy, it.IndexId, it.Profile?.Remarks, ct);
-        var message = OpenCodeColumnStatus.Format(result);
+        try
+        {
+            for (var i = 0; i < models.Count; i++)
+            {
+                ct.ThrowIfCancellationRequested();
 
-        ProfileExManager.Instance.SetTestOpenCode(it.IndexId, message);
-        await UpdateOpenCodeFunc(it.IndexId, message);
+                var result = await OpenCodeManager.Instance.TestConnectionThroughProxyAsync(
+                    webProxy, it.IndexId, it.Profile?.Remarks, models[i], ct);
+                if (ct.IsCancellationRequested)
+                {
+                    break;
+                }
 
-        completedIds.TryAdd(it.IndexId, 0);
+                boxes[i] = OpenCodeColumnStatus.ToBox(result.State);
+                await PublishAsync();
+
+                if (OpenCodeColumnStatus.IsCritical(result.State))
+                {
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            // Also on cancel: keeps the run-level handler from wiping partial boxes.
+            completedIds.TryAdd(it.IndexId, 0);
+        }
+    }
+
+    private IReadOnlyList<string> GetOpenCodeTestModels()
+    {
+        var item = _config?.OpenCodeItem;
+        if (item?.TestModelOrder is { Count: > 0 } order)
+        {
+            return order;
+        }
+
+        return item?.DefaultModel.IsNotEmpty() == true ? [item.DefaultModel] : [];
     }
 
     private async Task<int> DoRealPing(ServerTestItem it,

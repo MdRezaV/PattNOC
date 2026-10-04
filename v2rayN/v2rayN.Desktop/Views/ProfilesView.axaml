@@ -294,7 +294,7 @@
                         Header="{x:Static resx:ResUI.LvTestSpeed}"
                         Tag="SpeedVal" />
                     <DataGridTextColumn
-                        Width="140"
+                        Width="180"
                         Binding="{Binding OpenCodeVal}"
                         Header="{x:Static resx:ResUI.LvTestOpenCode}"
                         Tag="OpenCodeVal" />

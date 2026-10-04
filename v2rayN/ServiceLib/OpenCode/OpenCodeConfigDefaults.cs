@@ -66,6 +66,16 @@ public static class OpenCodeConfigDefaults
             item.DefaultModel = "";
         }
 
+        item.TestModelOrder ??= [];
+        var seenModels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        item.TestModelOrder = item.TestModelOrder
+            .Where(id => id.IsNotEmpty() && seenModels.Add(id))
+            .ToList();
+        if (item.TestModelOrder.Count > 0)
+        {
+            item.DefaultModel = item.TestModelOrder[0];
+        }
+
         if (item.GatewayHost.IsNullOrEmpty())
         {
             item.GatewayHost = Global.Loopback;

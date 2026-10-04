@@ -2121,6 +2121,24 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   <data name="OpenCodeColumnStreaming" xml:space="preserve">
     <value>Stream</value>
   </data>
+  <data name="OpenCodeColumnTest" xml:space="preserve">
+    <value>Test</value>
+  </data>
+  <data name="OpenCodePriorityList" xml:space="preserve">
+    <value>Test priority (top = first)</value>
+  </data>
+  <data name="OpenCodePriorityEmpty" xml:space="preserve">
+    <value>No models selected. Tick models in the list to build the test order.</value>
+  </data>
+  <data name="OpenCodePriorityMoveUp" xml:space="preserve">
+    <value>Move up</value>
+  </data>
+  <data name="OpenCodePriorityMoveDown" xml:space="preserve">
+    <value>Move down</value>
+  </data>
+  <data name="OpenCodePriorityRemove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
   <data name="OpenCodeModelCount" xml:space="preserve">
     <value>Showing {0} of {1} models</value>
   </data>

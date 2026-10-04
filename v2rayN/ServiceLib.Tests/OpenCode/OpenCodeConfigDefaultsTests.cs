@@ -66,6 +66,39 @@ public class OpenCodeConfigDefaultsTests
     }
 
     [Test]
+    public async Task Normalize_TestModelOrder_DedupesAndDrivesDefaultModel()
+    {
+        var item = new OpenCodeItem
+        {
+            DefaultModel = "stale-model",
+            TestModelOrder = ["model-b", "", "model-c", "MODEL-B", "model-b"],
+            Targets = TargetCatalogDefaults.CreateDefaultTargets(),
+        };
+
+        OpenCodeConfigDefaults.Normalize(item);
+
+        await item.TestModelOrder.Should().HaveCount(2);
+        await item.TestModelOrder[0].Should().BeEqualTo("model-b");
+        await item.TestModelOrder[1].Should().BeEqualTo("model-c");
+        await item.DefaultModel.Should().BeEqualTo("model-b");
+    }
+
+    [Test]
+    public async Task Normalize_TestModelOrder_KeepsDefaultModelWhenNothingSelected()
+    {
+        var item = new OpenCodeItem
+        {
+            DefaultModel = "solo-model",
+            Targets = TargetCatalogDefaults.CreateDefaultTargets(),
+        };
+
+        OpenCodeConfigDefaults.Normalize(item);
+
+        await item.TestModelOrder.Should().BeEmpty();
+        await item.DefaultModel.Should().BeEqualTo("solo-model");
+    }
+
+    [Test]
     public async Task Normalize_ForcesKeyOptionalAndEnabledOnTargets()
     {
         var item = new OpenCodeItem

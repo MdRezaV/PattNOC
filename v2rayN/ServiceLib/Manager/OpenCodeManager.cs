@@ -172,6 +172,7 @@ public sealed class OpenCodeManager
         IWebProxy webProxy,
         string? profileIndexId = null,
         string? profileRemark = null,
+        string? modelRef = null,
         CancellationToken ct = default)
     {
         try
@@ -194,7 +195,7 @@ public sealed class OpenCodeManager
             var snapshot = new ActiveProxySnapshot(webProxy, 0, profileIndexId ?? string.Empty, profileRemark);
             var executor = new RequestExecutor(new FixedProxyProvider(snapshot), catalog, telemetry);
             var tester = new ConnectivityTester(executor);
-            return await tester.TestAsync(settings, null, null, ct);
+            return await tester.TestAsync(settings, null, modelRef, ct);
         }
         catch (Exception ex)
         {

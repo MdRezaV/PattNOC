@@ -6157,6 +6157,60 @@ namespace ServiceLib.Resx {
         }
 
         /// <summary>
+        ///   查找类似 Test 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColumnTest {
+            get {
+                return ResourceManager.GetString("OpenCodeColumnTest", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Test priority (top = first) 的本地化字符串。
+        /// </summary>
+        public static string OpenCodePriorityList {
+            get {
+                return ResourceManager.GetString("OpenCodePriorityList", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 No models selected. Tick models in the list to build the test order. 的本地化字符串。
+        /// </summary>
+        public static string OpenCodePriorityEmpty {
+            get {
+                return ResourceManager.GetString("OpenCodePriorityEmpty", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Move up 的本地化字符串。
+        /// </summary>
+        public static string OpenCodePriorityMoveUp {
+            get {
+                return ResourceManager.GetString("OpenCodePriorityMoveUp", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Move down 的本地化字符串。
+        /// </summary>
+        public static string OpenCodePriorityMoveDown {
+            get {
+                return ResourceManager.GetString("OpenCodePriorityMoveDown", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Remove 的本地化字符串。
+        /// </summary>
+        public static string OpenCodePriorityRemove {
+            get {
+                return ResourceManager.GetString("OpenCodePriorityRemove", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 Showing {0} of {1} models 的本地化字符串。
         /// </summary>
         public static string OpenCodeModelCount {

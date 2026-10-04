@@ -335,6 +335,7 @@ public class OpenCodeItem
     public int MaxRetry { get; set; } = 1;
     public int MaxConcurrentRequests { get; set; } = 8;
     public bool DebugLogRequests { get; set; }
+    public List<string> TestModelOrder { get; set; } = [];
     public List<OpenCodeTargetItem> Targets { get; set; } = [];
 }
 
