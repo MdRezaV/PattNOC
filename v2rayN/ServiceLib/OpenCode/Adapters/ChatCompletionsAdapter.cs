@@ -66,8 +66,34 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
                 yield break;
             }
 
-            using var doc = JsonDocument.Parse(payload);
+            JsonDocument doc;
+            try
+            {
+                doc = JsonDocument.Parse(payload);
+            }
+            catch (JsonException)
+            {
+                // A garbled frame must not tear down an otherwise healthy stream.
+                continue;
+            }
+
+            using (doc)
+            {
             var root = doc.RootElement;
+
+            // In-band error frame (HTTP 200 but the stream reports failure).
+            if (root.TryGetProperty("error", out var errEl) && errEl.ValueKind == JsonValueKind.Object)
+            {
+                var errMsg = errEl.TryGetProperty("message", out var em) && em.ValueKind == JsonValueKind.String
+                    ? em.GetString() ?? "Upstream error."
+                    : "Upstream error.";
+                var errType = errEl.TryGetProperty("code", out var ec) && ec.ValueKind == JsonValueKind.String
+                    ? ec.GetString() ?? "server_error"
+                    : "server_error";
+                yield return new NormalizedStreamEvent(
+                    NormalizedStreamEventType.Error, ErrorType: errType, ErrorMessage: errMsg);
+                yield break;
+            }
 
             if (root.TryGetProperty("choices", out var choices) && choices.ValueKind == JsonValueKind.Array
                 && choices.GetArrayLength() > 0)
@@ -134,6 +160,7 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
                     yield return new NormalizedStreamEvent(
                         NormalizedStreamEventType.Usage, PromptTokens: pt, CompletionTokens: ctok);
                 }
+            }
             }
         }
     }

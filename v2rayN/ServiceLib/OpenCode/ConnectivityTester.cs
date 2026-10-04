@@ -18,6 +18,30 @@ public sealed class ConnectivityTester
         CancellationToken ct = default)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        var result = await TestCoreAsync(settings, targetId, modelRef, sw, ct);
+        sw.Stop();
+
+        // Every test — pass or fail — leaves one line behind.
+        OpenCodeRequestLog.Write(new OpenCodeLogEntry(
+            "test",
+            TargetId: targetId ?? settings.DefaultTarget,
+            ModelId: result.ModelRef ?? modelRef,
+            Profile: result.ProfileRemark,
+            HttpStatus: result.HttpStatus,
+            State: result.State,
+            Ok: result.State == EOpenCodeConnectivityState.OpenCodeAccepted,
+            LatencyMs: result.Elapsed is { } elapsed ? (long)elapsed.TotalMilliseconds : sw.ElapsedMilliseconds,
+            Detail: result.Detail));
+        return result;
+    }
+
+    private async Task<ConnectivityTestResult> TestCoreAsync(
+        OpenCodeItem settings,
+        string? targetId,
+        string? modelRef,
+        System.Diagnostics.Stopwatch sw,
+        CancellationToken ct)
+    {
         string? profileRemark = null;
 
         try
@@ -71,17 +95,54 @@ public sealed class ConnectivityTester
                 else if (result.Events is not null)
                 {
                     var sb = new System.Text.StringBuilder();
+                    var sawDone = false;
+                    var sawToolCall = false;
+                    string? streamError = null;
+
                     await foreach (var evt in result.Events.WithCancellation(ct))
                     {
                         if (evt.Type == NormalizedStreamEventType.TextDelta && evt.Text.IsNotEmpty())
                         {
                             sb.Append(evt.Text);
                         }
-
-                        if (evt.Type == NormalizedStreamEventType.Done)
+                        else if (evt.Type == NormalizedStreamEventType.ToolCallDelta)
                         {
+                            sawToolCall = true;
+                        }
+                        else if (evt.Type == NormalizedStreamEventType.Done)
+                        {
+                            sawDone = true;
+                        }
+                        else if (evt.Type == NormalizedStreamEventType.Error)
+                        {
+                            streamError = evt.ErrorMessage ?? "Upstream stream error.";
                             break;
                         }
+                    }
+
+                    // The transport said 2xx, but the stream itself must show a
+                    // completed reply — otherwise this would report success for a
+                    // connection that produced nothing.
+                    if (streamError is not null)
+                    {
+                        return new ConnectivityTestResult(
+                            EOpenCodeConnectivityState.ProviderError,
+                            streamError,
+                            result.HttpStatus,
+                            profileRemark,
+                            resolvedModel,
+                            sw.Elapsed);
+                    }
+
+                    if (!sawDone && sb.Length == 0 && !sawToolCall)
+                    {
+                        return new ConnectivityTestResult(
+                            EOpenCodeConnectivityState.ProviderError,
+                            "Stream ended without a completion event.",
+                            result.HttpStatus,
+                            profileRemark,
+                            resolvedModel,
+                            sw.Elapsed);
                     }
 
                     content = sb.ToString();

@@ -65,7 +65,19 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
                 continue;
             }
 
-            using var doc = JsonDocument.Parse(payload);
+            JsonDocument doc;
+            try
+            {
+                doc = JsonDocument.Parse(payload);
+            }
+            catch (JsonException)
+            {
+                // A garbled frame must not tear down an otherwise healthy stream.
+                continue;
+            }
+
+            using (doc)
+            {
             var root = doc.RootElement;
             var type = root.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String
                 ? t.GetString()
@@ -214,6 +226,7 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
                     yield return new NormalizedStreamEvent(
                         NormalizedStreamEventType.Error, ErrorType: errorType, ErrorMessage: errorMessage);
                     yield break;
+            }
             }
         }
     }

@@ -24,11 +24,100 @@ public sealed class ModelCatalog
         {
             if (_cache.ModelsByTarget.TryGetValue(targetId, out var cached) && cached.Count > 0)
             {
-                return cached;
+                return ApplyNegotiatedStyles(targetId, cached);
             }
         }
 
         return [];
+    }
+
+    /// <summary>
+    /// Ordered upstream formats to try for this model on this target: the known
+    /// (negotiated or catalog) style first, then every other registered format.
+    /// A target that pins DefaultApiStyle opts out and gets exactly that style.
+    /// </summary>
+    public IReadOnlyList<EOpenCodeApiStyle> GetStyleCandidates(OpenCodeTargetItem target, OpenCodeModel model)
+    {
+        if (target.DefaultApiStyle.IsNotEmpty())
+        {
+            return [ParseApiStyle(target.DefaultApiStyle)];
+        }
+
+        var candidates = new List<EOpenCodeApiStyle> { EffectiveStyle(target.Id, model) };
+        foreach (var style in Adapters.AdapterFactory.SupportedStyles())
+        {
+            if (style != candidates[0])
+            {
+                candidates.Add(style);
+            }
+        }
+
+        return candidates;
+    }
+
+    /// <summary>
+    /// Persist the format a model proved to answer on so later requests go
+    /// straight to it (and the UI column reflects reality).
+    /// </summary>
+    public void RecordNegotiatedStyle(string targetId, string modelId, EOpenCodeApiStyle style)
+    {
+        lock (_lock)
+        {
+            var key = NegotiationKey(targetId, modelId);
+            if (_cache.NegotiatedStyles.TryGetValue(key, out var existing) && existing == style)
+            {
+                return;
+            }
+
+            _cache.NegotiatedStyles[key] = style;
+            try
+            {
+                SaveCache();
+            }
+            catch (Exception ex)
+            {
+                Logging.SaveLog(Tag, ex);
+            }
+        }
+    }
+
+    internal EOpenCodeApiStyle EffectiveStyle(string targetId, OpenCodeModel model)
+    {
+        lock (_lock)
+        {
+            return _cache.NegotiatedStyles.TryGetValue(NegotiationKey(targetId, model.Id), out var negotiated)
+                ? negotiated
+                : model.ApiStyle;
+        }
+    }
+
+    private List<OpenCodeModel> ApplyNegotiatedStyles(string targetId, List<OpenCodeModel> models)
+    {
+        if (_cache.NegotiatedStyles.Count == 0)
+        {
+            return models;
+        }
+
+        List<OpenCodeModel>? updated = null;
+        for (var i = 0; i < models.Count; i++)
+        {
+            var model = models[i];
+            var effective = EffectiveStyle(targetId, model);
+            if (effective == model.ApiStyle)
+            {
+                continue;
+            }
+
+            updated ??= [.. models];
+            updated[i] = model with { ApiStyle = effective };
+        }
+
+        return updated ?? models;
+    }
+
+    private static string NegotiationKey(string targetId, string modelId)
+    {
+        return $"{targetId}/{modelId}";
     }
 
     public OpenCodeModel? Resolve(string? modelRef, string defaultTarget)

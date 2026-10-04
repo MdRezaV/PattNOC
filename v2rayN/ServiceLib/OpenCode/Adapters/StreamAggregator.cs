@@ -23,6 +23,7 @@ internal static class StreamAggregator
         var calls = new List<NormalizedToolCall>();
         var result = new NormalizedCompletionResponse();
         string? error = null;
+        var sawDone = false;
 
         await foreach (var evt in events.WithCancellation(ct))
         {
@@ -48,6 +49,7 @@ internal static class StreamAggregator
                     break;
 
                 case NormalizedStreamEventType.Done:
+                    sawDone = true;
                     result.FinishReason = evt.FinishReason ?? result.FinishReason;
                     break;
 
@@ -59,7 +61,13 @@ internal static class StreamAggregator
 
         if (error is not null)
         {
-            throw new InvalidOperationException(error);
+            throw new OpenCodeStreamException(error);
+        }
+
+        if (!sawDone && text.Length == 0 && calls.Count == 0)
+        {
+            throw new OpenCodeStreamException(
+                "Upstream stream ended without a completion event.");
         }
 
         if (text.Length > 0)

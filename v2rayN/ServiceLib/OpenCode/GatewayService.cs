@@ -219,12 +219,40 @@ public sealed class GatewayService
     {
         var requestId = Guid.NewGuid().ToString("N")[..12];
         context.Response.Headers["x-opencode-request-id"] = requestId;
+        string? modelRef = null;
+
+        // Client-facing outcomes are logged on every terminal path so the log
+        // shows both what was asked of the gateway and what the client got.
+        async Task ClientErrorAsync(int status, OpenCodeError error, string fmt)
+        {
+            await WriteError(context, status, error, fmt);
+            OpenCodeRequestLog.Write(new OpenCodeLogEntry(
+                "client",
+                RequestId: requestId,
+                Client: clientFormat,
+                ModelId: modelRef,
+                HttpStatus: status,
+                Ok: false,
+                Detail: $"{error.Message} ({error.Code ?? "error"})"));
+        }
+
+        void ClientLog(bool? ok, int? status, string detail)
+        {
+            OpenCodeRequestLog.Write(new OpenCodeLogEntry(
+                "client",
+                RequestId: requestId,
+                Client: clientFormat,
+                ModelId: modelRef,
+                HttpStatus: status,
+                Ok: ok,
+                Detail: detail));
+        }
 
         var semaphore = _concurrency;
         if (semaphore is null || !await semaphore.WaitAsync(TimeSpan.FromSeconds(5), context.RequestAborted))
         {
-            await WriteError(context, 503, new OpenCodeError(
-                "server_error", "Gateway is overloaded. Try again shortly.", 503, null, "overloaded_error"));
+            await ClientErrorAsync(503, new OpenCodeError(
+                "server_error", "Gateway is overloaded. Try again shortly.", 503, null, "overloaded_error"), "chat");
             return;
         }
 
@@ -233,8 +261,8 @@ public sealed class GatewayService
             var settings = _getSettings();
             if (!settings.Enabled || !settings.GatewayEnabled)
             {
-                await WriteError(context, 503, new OpenCodeError(
-                    "server_error", "OpenCode gateway is disabled.", 503, null, "gateway_disabled"));
+                await ClientErrorAsync(503, new OpenCodeError(
+                    "server_error", "OpenCode gateway is disabled.", 503, null, "gateway_disabled"), "chat");
                 return;
             }
 
@@ -246,8 +274,8 @@ public sealed class GatewayService
 
             if (body.IsNullOrEmpty())
             {
-                await WriteError(context, 400, new OpenCodeError(
-                    "invalid_request_error", "Request body is required.", 400));
+                await ClientErrorAsync(400, new OpenCodeError(
+                    "invalid_request_error", "Request body is required.", 400), "chat");
                 return;
             }
 
@@ -260,7 +288,7 @@ public sealed class GatewayService
 
             if (request is null)
             {
-                await WriteError(context, 400, new OpenCodeError(
+                await ClientErrorAsync(400, new OpenCodeError(
                     "invalid_request_error", "Malformed request body.", 400), clientFormat);
                 return;
             }
@@ -273,27 +301,23 @@ public sealed class GatewayService
             var rawModel = request.Model.IsNullOrEmpty() ? settings.DefaultModel : request.Model;
             var bareModel = StripClaudePrefix(rawModel);
             request = request with { Model = bareModel };
-            var modelRef = claudeAlias ? ApplyClaudePrefix(bareModel) : rawModel;
+            modelRef = claudeAlias ? ApplyClaudePrefix(bareModel) : rawModel;
 
             if (settings.FreeOnly)
             {
                 var (_, resolvedModel) = _catalog.ResolveTargetModel(bareModel, settings);
                 if (resolvedModel is null || !resolvedModel.IsFree)
                 {
-                    await WriteError(context, 404, new OpenCodeError(
+                    await ClientErrorAsync(404, new OpenCodeError(
                         "not_found_error", $"Model '{modelRef}' not found.", 404, null, "model_not_found"), clientFormat);
                     return;
                 }
             }
 
-            if (settings.DebugLogRequests)
-            {
-                Logging.SaveLog($"{Tag} <- client={clientFormat} model={modelRef} " +
-                    $"stream={request.Stream} stop={request.Stop?.Count ?? 0} " +
-                    $"messages={request.Messages.Count} tools={request.Tools?.Count ?? 0}");
-            }
+            ClientLog(null, null, $"stream={request.Stream} stop={request.Stop?.Count ?? 0} " +
+                $"messages={request.Messages.Count} tools={request.Tools?.Count ?? 0}");
 
-            var result = await _executor.ExecuteAsync(request, settings, context.RequestAborted);
+            var result = await _executor.ExecuteAsync(request, settings, context.RequestAborted, requestId);
 
             if (!result.Success)
             {
@@ -305,20 +329,22 @@ public sealed class GatewayService
                     context.Response.Headers["Retry-After"] = result.RetryAfter;
                 }
 
-                await WriteError(context, status, result.Error ?? new OpenCodeError(
+                await ClientErrorAsync(status, result.Error ?? new OpenCodeError(
                     "server_error", "Request failed.", status), clientFormat);
                 return;
             }
 
             if (request.Stream && result.Events is not null)
             {
-                await WriteStream(context, clientFormat, modelRef, result.Events);
+                var streamedOk = await WriteStream(context, clientFormat, modelRef, result.Events);
+                ClientLog(streamedOk, 200,
+                    streamedOk ? "stream completed" : "stream aborted with upstream error");
                 return;
             }
 
             if (result.Response is null)
             {
-                await WriteError(context, 502, new OpenCodeError(
+                await ClientErrorAsync(502, new OpenCodeError(
                     "server_error", "Upstream returned no content.", 502), clientFormat);
                 return;
             }
@@ -330,14 +356,17 @@ public sealed class GatewayService
                 _ => ClientFormat.WriteResponses(result.Response, modelRef),
             };
             await WriteJson(context, 200, json);
+            ClientLog(true, 200, "non-stream completed");
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
             // Client disconnected; upstream cancellation is handled by the executor.
+            ClientLog(false, null, "client disconnected");
         }
         catch (Exception ex)
         {
             Logging.SaveLog(Tag, ex);
+            ClientLog(false, 500, $"internal gateway error: {ex.Message}");
             try
             {
                 if (!context.Response.HasStarted)
@@ -357,7 +386,7 @@ public sealed class GatewayService
         }
     }
 
-    private async Task WriteStream(
+    private async Task<bool> WriteStream(
         HttpContext context,
         string clientFormat,
         string modelRef,
@@ -377,12 +406,12 @@ public sealed class GatewayService
                     await WriteSse(context, eventName, json);
                     if (eventName is "message_stop" or "error")
                     {
-                        return;
+                        return eventName == "message_stop";
                     }
                 }
             }
 
-            return;
+            return true;
         }
 
         var responseId = clientFormat == "chat"
@@ -397,7 +426,7 @@ public sealed class GatewayService
                     evt.ErrorType ?? "server_error",
                     evt.ErrorMessage ?? "Upstream error."));
                 await WriteSse(context, "error", errorJson);
-                return;
+                return false;
             }
 
             if (clientFormat == "chat")
@@ -415,7 +444,7 @@ public sealed class GatewayService
                 {
                     await context.Response.WriteAsync("data: [DONE]\n\n", context.RequestAborted);
                     await context.Response.Body.FlushAsync(context.RequestAborted);
-                    return;
+                    return true;
                 }
             }
             else
@@ -430,7 +459,7 @@ public sealed class GatewayService
 
                 if (evt.Type == NormalizedStreamEventType.Done)
                 {
-                    return;
+                    return true;
                 }
             }
         }
@@ -440,6 +469,8 @@ public sealed class GatewayService
             await context.Response.WriteAsync("data: [DONE]\n\n", context.RequestAborted);
             await context.Response.Body.FlushAsync(context.RequestAborted);
         }
+
+        return true;
     }
 
     private static async Task WriteSse(HttpContext context, string eventName, string json)

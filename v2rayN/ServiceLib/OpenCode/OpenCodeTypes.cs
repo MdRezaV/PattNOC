@@ -16,6 +16,13 @@ public sealed class OpenCodeCatalogCache
 {
     public DateTime UpdatedAt { get; set; }
     public Dictionary<string, List<OpenCodeModel>> ModelsByTarget { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Request-negotiated upstream API style per "targetId/modelId". The remote
+    /// catalog only lists ids, so the format a model actually answers on is
+    /// discovered by trying it and recorded here to survive restarts.
+    /// </summary>
+    public Dictionary<string, EOpenCodeApiStyle> NegotiatedStyles { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 public sealed record NormalizedMessage
@@ -120,6 +127,12 @@ public sealed record OpenCodeTelemetrySnapshot(
     DateTime? LastSuccessAtUtc,
     DateTime? LastFailureAtUtc,
     string? LastFailureSummary);
+
+/// <summary>
+/// An upstream response body/SSE stream failed to fold into a completion —
+/// the transport succeeded but the payload was an error or unparseable.
+/// </summary>
+public sealed class OpenCodeStreamException(string message) : Exception(message);
 
 public sealed record ConnectivityTestResult(
     EOpenCodeConnectivityState State,

@@ -601,6 +601,14 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                 }
 
                 boxes[i] = OpenCodeColumnStatus.ToBox(result.State);
+                OpenCodeRequestLog.Write(new OpenCodeLogEntry(
+                    "testbox",
+                    ModelId: result.ModelRef ?? models[i],
+                    Profile: it.Profile?.Remarks,
+                    State: result.State,
+                    Ok: result.State == EOpenCodeConnectivityState.OpenCodeAccepted,
+                    LatencyMs: result.Elapsed is { } elapsed ? (long)elapsed.TotalMilliseconds : null,
+                    Detail: $"box={boxes[i]} {result.Detail}"));
                 await PublishAsync();
 
                 if (OpenCodeColumnStatus.IsCritical(result.State))

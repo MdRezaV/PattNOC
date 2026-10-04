@@ -259,8 +259,10 @@ public class RequestExecutorTests
     }
 
     [Test]
-    public async Task Execute_Provider5xx_RetriesOnce()
+    public async Task Execute_Provider5xx_ProbesBothStyles_RetriesLastOnce()
     {
+        // A 5xx looks like "wrong request format": the preferred style is probed
+        // once, then the alternate format gets 1 + MaxRetry attempts.
         var handler = new StubHttpHandler(_ => Json(HttpStatusCode.BadGateway, "upstream boom"));
         var provider = new StubProxyProvider { Snapshot = Snapshot() };
         var executor = CreateExecutor(provider, handler);
@@ -269,19 +271,23 @@ public class RequestExecutorTests
 
         await result.Success.Should().BeFalse();
         await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.ProviderError);
-        await handler.CallCount.Should().BeEqualTo(2);
+        // Preferred style failed → its failure is reported, not the alternate's.
+        await result.Route!.Adapter.Style.Should().BeEqualTo(EOpenCodeApiStyle.ChatCompletions);
+        await handler.CallCount.Should().BeEqualTo(3);
     }
 
     [Test]
-    public async Task Execute_MaxRetryZero_SingleAttemptOnly()
+    public async Task Execute_MaxRetryZero_OneAttemptPerFormat()
     {
+        // MaxRetry=0 means no retries — but each registered format still gets its
+        // single probe, since a 5xx may simply be the wrong endpoint for the model.
         var handler = new StubHttpHandler(_ => Json(HttpStatusCode.BadGateway, "boom"));
         var provider = new StubProxyProvider { Snapshot = Snapshot() };
         var executor = CreateExecutor(provider, handler);
 
         var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 0));
 
-        await handler.CallCount.Should().BeEqualTo(1);
+        await handler.CallCount.Should().BeEqualTo(2);
         await result.Success.Should().BeFalse();
     }
 
