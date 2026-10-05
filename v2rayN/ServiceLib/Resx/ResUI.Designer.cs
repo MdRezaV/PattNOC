@@ -1580,6 +1580,15 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("menuRemoveDuplicateServer", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   查找类似 Remove duplicate IP 的本地化字符串。
+        /// </summary>
+        public static string menuRemoveDuplicateIp {
+            get {
+                return ResourceManager.GetString("menuRemoveDuplicateIp", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   查找类似 Remove invalid by test results 的本地化字符串。

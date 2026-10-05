@@ -51,6 +51,7 @@ public partial class ProfilesViewModel : MyReactiveObject
 
     public ReactiveCommand<RxVoid, RxVoid> RemoveServerCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> RemoveDuplicateServerCmd { get; }
+    public ReactiveCommand<RxVoid, RxVoid> RemoveDuplicateIpCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> CopyServerCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> SetDefaultServerCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> ShareServerCmd { get; }
@@ -127,6 +128,10 @@ public partial class ProfilesViewModel : MyReactiveObject
         RemoveDuplicateServerCmd = ReactiveCommand.CreateFromTask(async () =>
         {
             await RemoveDuplicateServer();
+        });
+        RemoveDuplicateIpCmd = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await RemoveDuplicateIp();
         });
         CopyServerCmd = ReactiveCommand.CreateFromTask(async () =>
         {
@@ -551,6 +556,22 @@ public partial class ProfilesViewModel : MyReactiveObject
         }
 
         var tuple = await ConfigHandler.DedupServerList(_config, _config.SubIndexId);
+        if (tuple.Item1 > 0 || tuple.Item2 > 0)
+        {
+            await RefreshServers();
+            Reload();
+        }
+        NoticeManager.Instance.Enqueue(string.Format(ResUI.RemoveDuplicateServerResult, tuple.Item1, tuple.Item2));
+    }
+
+    private async Task RemoveDuplicateIp()
+    {
+        if (await ShowYesNoInteraction.HandleSafe(ResUI.RemoveServer) == false)
+        {
+            return;
+        }
+
+        var tuple = await ConfigHandler.DedupServerListByIp(_config, _config.SubIndexId);
         if (tuple.Item1 > 0 || tuple.Item2 > 0)
         {
             await RefreshServers();

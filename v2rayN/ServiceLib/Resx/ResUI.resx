@@ -483,6 +483,9 @@
   <data name="menuRemoveDuplicateServer" xml:space="preserve">
     <value>Remove duplicate</value>
   </data>
+  <data name="menuRemoveDuplicateIp" xml:space="preserve">
+    <value>Remove duplicate IP</value>
+  </data>
   <data name="menuRemoveServer" xml:space="preserve">
     <value>Remove selected</value>
   </data>

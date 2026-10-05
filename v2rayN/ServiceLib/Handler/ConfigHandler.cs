@@ -1217,6 +1217,79 @@ public static class ConfigHandler
     }
 
     /// <summary>
+    /// Remove servers with duplicate outbound IP addresses
+    /// Servers with unknown IP are ignored
+    /// </summary>
+    /// <param name="config">Current configuration</param>
+    /// <param name="subId">Subscription ID to deduplicate</param>
+    /// <returns>Tuple with total count and remaining count after deduplication</returns>
+    public static async Task<Tuple<int, int>> DedupServerListByIp(Config config, string subId)
+    {
+        var lstProfile = await AppManager.Instance.ProfileItems(subId);
+        if (lstProfile == null)
+        {
+            return new Tuple<int, int>(0, 0);
+        }
+
+        var dicIpInfo = (await ProfileExManager.Instance.GetProfileExs())
+            .ToDictionary(t => t.IndexId, t => t.IpInfo);
+
+        List<ProfileItem> lstKeep = [];
+        List<ProfileItem> lstRemove = [];
+        HashSet<string> seenIps = new(StringComparer.OrdinalIgnoreCase);
+        if (!config.GuiItem.KeepOlderDedupl)
+        {
+            lstProfile.Reverse();
+        }
+
+        foreach (var item in lstProfile)
+        {
+            if (item.IsComplex())
+            {
+                lstKeep.Add(item);
+                continue;
+            }
+
+            string? ip = null;
+            if (item.IndexId is not null && dicIpInfo.TryGetValue(item.IndexId, out var ipInfo))
+            {
+                ip = ExtractDedupIp(ipInfo);
+            }
+
+            if (ip == null || seenIps.Add(ip))
+            {
+                lstKeep.Add(item);
+            }
+            else
+            {
+                lstRemove.Add(item);
+            }
+        }
+        await RemoveServers(config, lstRemove);
+
+        return new Tuple<int, int>(lstProfile.Count, lstKeep.Count);
+    }
+
+    /// <summary>
+    /// Extract a comparable IP address from stored IpInfo text
+    /// Returns null when the IP is unknown (untested, none, skip test, unresolved)
+    /// </summary>
+    private static string? ExtractDedupIp(string? ipInfo)
+    {
+        if (ipInfo.IsNullOrEmpty())
+        {
+            return null;
+        }
+
+        var token = ipInfo.Trim().Split(' ').LastOrDefault();
+        if (System.Net.IPAddress.TryParse(token, out _))
+        {
+            return token;
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Common server addition logic used by all server types
     /// Sets common properties and handles sorting and persistence
     /// </summary>
