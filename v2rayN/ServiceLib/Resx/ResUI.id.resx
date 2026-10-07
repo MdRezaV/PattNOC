@@ -1380,6 +1380,27 @@
   <data name="TbSettingsMixedConcurrencyCount" xml:space="preserve">
     <value>Jumlah pengujian bersamaan saat uji multi</value>
   </data>
+  <data name="TbSettingsRealDelayTestTimeout" xml:space="preserve">
+    <value>Real Delay Test Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsRealDelayTestConcurrent" xml:space="preserve">
+    <value>Real Delay Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsRealDelayTestRetry" xml:space="preserve">
+    <value>Real Delay Test Retry Count</value>
+  </data>
+  <data name="TbSettingsMultiTestDelayTimeout" xml:space="preserve">
+    <value>Multi Test Delay Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestSpeedTimeout" xml:space="preserve">
+    <value>Multi Test Speed Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestConcurrent" xml:space="preserve">
+    <value>Multi Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsMultiTestRetry" xml:space="preserve">
+    <value>Multi Test Retry Count</value>
+  </data>
   <data name="TbSettingsExceptionTip2" xml:space="preserve">
     <value>Pengecualian: jangan gunakan server proxy untuk alamat berikut. Pisahkan dengan koma (,).</value>
   </data>

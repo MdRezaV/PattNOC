@@ -46,7 +46,8 @@ public sealed class RequestExecutor
         NormalizedCompletionRequest request,
         OpenCodeItem settings,
         CancellationToken ct = default,
-        string? requestId = null)
+        string? requestId = null,
+        bool allowSessionRefresh = true)
     {
         requestId ??= Guid.NewGuid().ToString("N")[..12];
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -54,7 +55,7 @@ public sealed class RequestExecutor
         ExecutorResult result;
         try
         {
-            result = await ExecuteCoreAsync(request, settings, requestId, ct);
+            result = await ExecuteCoreAsync(request, settings, requestId, allowSessionRefresh, ct);
         }
         catch (Exception ex)
         {
@@ -97,6 +98,7 @@ public sealed class RequestExecutor
         NormalizedCompletionRequest request,
         OpenCodeItem settings,
         string requestId,
+        bool allowSessionRefresh,
         CancellationToken ct)
     {
         var modelRef = request.Model.IsNullOrEmpty() ? settings.DefaultModel : request.Model;
@@ -224,9 +226,13 @@ public sealed class RequestExecutor
                             (int)response.StatusCode, body, null, proxyUnavailable: false);
                         response.Dispose();
 
-                        // 403 FreeTierError: retry once. Every attempt re-runs BuildRequest, so
+                        // 403 FreeTierError: retry once on live paths to recover a stale
+                        // free-tier session. Every attempt re-runs BuildRequest, so
                         // x-opencode-session / x-opencode-request already come out fresh.
-                        if (!sessionRefreshed
+                        // Test paths pass allowSessionRefresh=false so a 403 is reported
+                        // as a valid result instead of being retried.
+                        if (allowSessionRefresh
+                            && !sessionRefreshed
                             && (int)response.StatusCode == 403
                             && body is not null
                             && body.Contains("FreeTierError", StringComparison.OrdinalIgnoreCase))

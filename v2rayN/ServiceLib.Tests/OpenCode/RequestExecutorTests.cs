@@ -389,4 +389,73 @@ public class RequestExecutorTests
         await result.Route!.Target.Id.Should().BeEqualTo("opencode-free");
         await result.Route.Model.Id.Should().BeEqualTo("big-pickle");
     }
+
+    [Test]
+    public async Task Execute_ForbiddenWithoutFreeTier_DoesNotRetry()
+    {
+        var handler = new StubHttpHandler(_ => Json(HttpStatusCode.Forbidden, """{"error":"not allowed"}"""));
+        var provider = new StubProxyProvider { Snapshot = Snapshot() };
+        var executor = CreateExecutor(provider, handler);
+
+        var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 3));
+
+        await result.Success.Should().BeFalse();
+        await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.AuthorizationFailed);
+        await result.HttpStatus.Should().BeEqualTo(403);
+        await handler.CallCount.Should().BeEqualTo(1);
+    }
+
+    [Test]
+    public async Task Execute_FreeTier403TestPath_DoesNotRetry_ReportsAuthorizationFailed()
+    {
+        var handler = new StubHttpHandler(_ => Json(HttpStatusCode.Forbidden,
+            """{"error":{"message":"FreeTierError: can only be used from within OpenCode","type":"forbidden"}}"""));
+        var provider = new StubProxyProvider { Snapshot = Snapshot() };
+        var executor = CreateExecutor(provider, handler);
+
+        var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 3), allowSessionRefresh: false);
+
+        await result.Success.Should().BeFalse();
+        await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.AuthorizationFailed);
+        await result.HttpStatus.Should().BeEqualTo(403);
+        await handler.CallCount.Should().BeEqualTo(1);
+    }
+
+    [Test]
+    public async Task Execute_FreeTier403LivePath_RefreshesSessionOnceThenSucceeds()
+    {
+        var calls = 0;
+        var handler = new StubHttpHandler(_ =>
+        {
+            calls++;
+            return calls == 1
+                ? Json(HttpStatusCode.Forbidden,
+                    """{"error":{"message":"FreeTierError: stale session","type":"forbidden"}}""")
+                : Json(HttpStatusCode.OK, ChatOkBody());
+        });
+        var provider = new StubProxyProvider { Snapshot = Snapshot() };
+        var executor = CreateExecutor(provider, handler);
+
+        // MaxRetry=0 proves the session refresh is independent of the retry budget.
+        var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 0));
+
+        await result.Success.Should().BeTrue();
+        await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.OpenCodeAccepted);
+        await handler.CallCount.Should().BeEqualTo(2);
+    }
+
+    [Test]
+    public async Task Execute_FreeTier403LivePath_PersistentFailure_RetriesOnceOnly()
+    {
+        var handler = new StubHttpHandler(_ => Json(HttpStatusCode.Forbidden,
+            """{"error":{"message":"FreeTierError: stale session","type":"forbidden"}}"""));
+        var provider = new StubProxyProvider { Snapshot = Snapshot() };
+        var executor = CreateExecutor(provider, handler);
+
+        var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 3));
+
+        await result.Success.Should().BeFalse();
+        await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.AuthorizationFailed);
+        await handler.CallCount.Should().BeEqualTo(2);
+    }
 }

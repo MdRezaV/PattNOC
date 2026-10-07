@@ -4663,6 +4663,69 @@ namespace ServiceLib.Resx {
         }
         
         /// <summary>
+        ///   查找类似 Real Delay Test Timeout (seconds) 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsRealDelayTestTimeout {
+            get {
+                return ResourceManager.GetString("TbSettingsRealDelayTestTimeout", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Real Delay Test Concurrent Count 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsRealDelayTestConcurrent {
+            get {
+                return ResourceManager.GetString("TbSettingsRealDelayTestConcurrent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Real Delay Test Retry Count 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsRealDelayTestRetry {
+            get {
+                return ResourceManager.GetString("TbSettingsRealDelayTestRetry", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Multi Test Delay Timeout (seconds) 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsMultiTestDelayTimeout {
+            get {
+                return ResourceManager.GetString("TbSettingsMultiTestDelayTimeout", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Multi Test Speed Timeout (seconds) 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsMultiTestSpeedTimeout {
+            get {
+                return ResourceManager.GetString("TbSettingsMultiTestSpeedTimeout", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Multi Test Concurrent Count 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsMultiTestConcurrent {
+            get {
+                return ResourceManager.GetString("TbSettingsMultiTestConcurrent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Multi Test Retry Count 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsMultiTestRetry {
+            get {
+                return ResourceManager.GetString("TbSettingsMultiTestRetry", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Xray Mux setting 的本地化字符串。
         /// </summary>
         public static string TbSettingsMux4Ray {

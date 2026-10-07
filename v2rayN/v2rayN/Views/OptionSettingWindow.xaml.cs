@@ -44,8 +44,16 @@ public partial class OptionSettingWindow
         cmbCoreType7.ItemsSource = Global.CoreTypes;
         cmbCoreType9.ItemsSource = Global.CoreTypes;
 
-        cmbMixedConcurrencyCount.ItemsSource = Enumerable.Range(Global.SpeedTestConcurrencyCountMin, Global.SpeedTestConcurrencyCountMax - Global.SpeedTestConcurrencyCountMin + 1).ToList();
-        cmbSpeedTestTimeout.ItemsSource = Enumerable.Range(2, 5).Select(i => i * 5).ToList();
+        var concurrencyOptions = Enumerable.Range(Global.SpeedTestConcurrencyCountMin, Global.SpeedTestConcurrencyCountMax - Global.SpeedTestConcurrencyCountMin + 1).ToList();
+        var timeoutOptions = Enumerable.Range(Global.TestTimeoutSecondsMin, Global.TestTimeoutSecondsMax - Global.TestTimeoutSecondsMin + 1).ToList();
+        var retryOptions = Enumerable.Range(Global.TestRetryCountMin, Global.TestRetryCountMax - Global.TestRetryCountMin + 1).ToList();
+        cmbRealDelayTimeout.ItemsSource = timeoutOptions;
+        cmbMultiDelayTimeout.ItemsSource = timeoutOptions;
+        cmbMultiSpeedTimeout.ItemsSource = timeoutOptions;
+        cmbRealDelayConcurrent.ItemsSource = concurrencyOptions;
+        cmbMultiConcurrent.ItemsSource = concurrencyOptions;
+        cmbRealDelayRetry.ItemsSource = retryOptions;
+        cmbMultiRetry.ItemsSource = retryOptions;
         cmbSpeedTestUrl.ItemsSource = Global.SpeedTestUrls;
         cmbSpeedPingTestUrl.ItemsSource = Global.SpeedPingTestUrls;
         cmbUdpTestTarget.ItemsSource = Global.UdpTestTargets;
@@ -104,11 +112,16 @@ public partial class OptionSettingWindow
             this.Bind(ViewModel, vm => vm.AutoUpdateInterval, v => v.txtautoUpdateInterval.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.TrayMenuServersLimit, v => v.txttrayMenuServersLimit.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.CurrentFontFamily, v => v.cmbcurrentFontFamily.Text).DisposeWith(disposables);
-            this.Bind(ViewModel, vm => vm.SpeedTestTimeout, v => v.cmbSpeedTestTimeout.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.RealDelayTimeoutSeconds, v => v.cmbRealDelayTimeout.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.RealDelayConcurrentCount, v => v.cmbRealDelayConcurrent.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.RealDelayRetryCount, v => v.cmbRealDelayRetry.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.MultiDelayTimeoutSeconds, v => v.cmbMultiDelayTimeout.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.MultiSpeedTimeoutSeconds, v => v.cmbMultiSpeedTimeout.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.MultiConcurrentCount, v => v.cmbMultiConcurrent.Text).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.MultiRetryCount, v => v.cmbMultiRetry.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SpeedTestUrl, v => v.cmbSpeedTestUrl.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SpeedPingTestUrl, v => v.cmbSpeedPingTestUrl.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.UdpTestTarget, v => v.cmbUdpTestTarget.Text).DisposeWith(disposables);
-            this.Bind(ViewModel, vm => vm.MixedConcurrencyCount, v => v.cmbMixedConcurrencyCount.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.EnableHWA, v => v.togEnableHWA.IsChecked).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SubConvertUrl, v => v.cmbSubConvertUrl.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.MainGirdOrientation, v => v.cmbMainGirdOrientation.SelectedIndex).DisposeWith(disposables);

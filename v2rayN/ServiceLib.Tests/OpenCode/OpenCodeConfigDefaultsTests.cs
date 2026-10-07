@@ -125,6 +125,24 @@ public class OpenCodeConfigDefaultsTests
     }
 
     [Test]
+    public async Task Normalize_ClampsConcurrentRequestsToOneThroughThirty()
+    {
+        var low = new OpenCodeItem { MaxConcurrentRequests = 0 };
+        OpenCodeConfigDefaults.Normalize(low);
+        await low.MaxConcurrentRequests.Should().BeEqualTo(Global.OpenCodeMaxConcurrentDefault);
+
+        var high = new OpenCodeItem { MaxConcurrentRequests = 64 };
+        OpenCodeConfigDefaults.Normalize(high);
+        await high.MaxConcurrentRequests.Should().BeEqualTo(Global.OpenCodeMaxConcurrentMax);
+        await Global.OpenCodeMaxConcurrentMin.Should().BeEqualTo(1);
+        await Global.OpenCodeMaxConcurrentMax.Should().BeEqualTo(30);
+
+        var valid = new OpenCodeItem { MaxConcurrentRequests = 30 };
+        OpenCodeConfigDefaults.Normalize(valid);
+        await valid.MaxConcurrentRequests.Should().BeEqualTo(30);
+    }
+
+    [Test]
     public async Task OpenCodeUrl_Combine_NormalizesSlashes()
     {
         await OpenCodeUrl.Combine("https://opencode.ai/zen/v1", "/chat/completions")

@@ -105,13 +105,13 @@ public static class OpenCodeConfigDefaults
             item.MaxRetry = 3;
         }
 
-        if (item.MaxConcurrentRequests < 1)
+        if (item.MaxConcurrentRequests < Global.OpenCodeMaxConcurrentMin)
         {
-            item.MaxConcurrentRequests = 8;
+            item.MaxConcurrentRequests = Global.OpenCodeMaxConcurrentDefault;
         }
-        else if (item.MaxConcurrentRequests > 64)
+        else if (item.MaxConcurrentRequests > Global.OpenCodeMaxConcurrentMax)
         {
-            item.MaxConcurrentRequests = 64;
+            item.MaxConcurrentRequests = Global.OpenCodeMaxConcurrentMax;
         }
     }
 }

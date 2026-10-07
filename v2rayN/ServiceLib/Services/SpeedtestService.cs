@@ -99,7 +99,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                     break;
 
                 case ESpeedActionType.Realping:
-                    await RunRealPingBatchAsync(lstSelected, completedIds, 0, ct);
+                    await RunRealPingBatchAsync(lstSelected, completedIds, ct);
                     break;
 
                 case ESpeedActionType.UdpTest:
@@ -111,7 +111,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                     break;
 
                 case ESpeedActionType.Mixedtest:
-                    await RunMixedTestAsync(lstSelected, completedIds, _config.SpeedTestItem.MixedConcurrencyCount, true,
+                    await RunMixedTestAsync(lstSelected, completedIds, GetMultiConcurrentCount(), true,
                         ct);
                     break;
 
@@ -247,45 +247,43 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
     }
 
     private async Task RunRealPingBatchAsync(List<ServerTestItem> lstSelected,
-        ConcurrentDictionary<string, byte> completedIds, int pageSize = 0, CancellationToken ct = default)
+        ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
     {
-        if (pageSize <= 0)
-        {
-            pageSize = _config.SpeedTestItem.MixedConcurrencyCount;
-        }
+        var pageSize = GetRealDelayConcurrentCount();
         var lstTest = GetTestBatchItem(lstSelected, pageSize);
 
+        var retryCount = GetRealDelayRetryCount();
         List<ServerTestItem> lstFailed = [];
         foreach (var lst in lstTest)
         {
-            var ret = await RunRealPingAsync(lst, completedIds, ct);
-            if (ret == false)
+            var failed = await RunRealPingAsync(lst, completedIds, ct);
+            if (failed is null)
             {
+                // Core failed to start for this batch: keep items pending for retry.
                 lstFailed.AddRange(lst);
+            }
+            else
+            {
+                lstFailed.AddRange(failed);
             }
             await Task.Delay(_delayInterval, ct);
         }
 
-        //Retest the failed part
-        var pageSizeNext = pageSize / 2;
-        if (lstFailed.Count > 0 && pageSizeNext > 0)
+        //Retry the failed part
+        for (var retry = 0; retry < retryCount && lstFailed.Count > 0; retry++)
         {
             ct.ThrowIfCancellationRequested();
 
             await UpdateFunc("", string.Format(ResUI.SpeedtestingTestFailedPart, lstFailed.Count));
 
-            if (pageSizeNext > _config.SpeedTestItem.MixedConcurrencyCount)
-            {
-                await RunRealPingBatchAsync(lstFailed, completedIds, pageSizeNext, ct);
-            }
-            else
-            {
-                await RunMixedTestAsync(lstSelected, completedIds, _config.SpeedTestItem.MixedConcurrencyCount, false, ct);
-            }
+            var retryList = lstFailed;
+            lstFailed = [];
+            var failed = await RunRealPingAsync(retryList, completedIds, ct);
+            lstFailed.AddRange(failed ?? retryList);
         }
     }
 
-    private async Task<bool> RunRealPingAsync(List<ServerTestItem> selecteds,
+    private async Task<List<ServerTestItem>?> RunRealPingAsync(List<ServerTestItem> selecteds,
         ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
     {
         ProcessService processService = null;
@@ -294,14 +292,16 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(selecteds);
             if (processService is null)
             {
-                return false;
+                return null;
             }
             await Task.Delay(1000, ct);
 
             var parallelOptions = new ParallelOptions
             {
+                MaxDegreeOfParallelism = GetRealDelayConcurrentCount(),
                 CancellationToken = ct,
             };
+            var failed = new ConcurrentBag<ServerTestItem>();
 
             await Parallel.ForEachAsync(selecteds, parallelOptions, async (it, innerCt) =>
             {
@@ -314,7 +314,11 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
 
                 try
                 {
-                    await DoRealPing(it, completedIds, innerCt);
+                    var delay = await DoRealPing(it, completedIds, innerCt);
+                    if (delay <= 0)
+                    {
+                        failed.Add(it);
+                    }
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -323,8 +327,10 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                 catch (Exception ex)
                 {
                     Logging.SaveLog(_tag, ex);
+                    failed.Add(it);
                 }
             });
+            return failed.ToList();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -333,6 +339,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
+            return null;
         }
         finally
         {
@@ -341,7 +348,6 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                 await processService?.StopAsync();
             }
         }
-        return true;
     }
 
     private async Task RunUdpTestBatchAsync(List<ServerTestItem> lstSelected,
@@ -450,53 +456,79 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         {
             innerCt.ThrowIfCancellationRequested();
 
-            ProcessService processService = null;
-            try
+            var delay = await TestMixedItemAsync(downloadHandle, it, blSpeedTest, GetMultiDelayTimeoutSeconds(), innerCt);
+            if (delay > 0 || !blSpeedTest)
             {
-                processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(it);
-                if (processService is null)
-                {
-                    await UpdateFunc(it.IndexId, "", ResUI.FailedToRunCore);
-                    return;
-                }
+                completedIds.TryAdd(it.IndexId, 0);
+                return;
+            }
 
-                await Task.Delay(1000, innerCt);
-
-                var delay = await DoRealPing(it, completedIds, innerCt);
-                if (blSpeedTest)
+            var retryCount = GetMultiRetryCount();
+            for (var retry = 0; retry < retryCount; retry++)
+            {
+                innerCt.ThrowIfCancellationRequested();
+                await UpdateFunc(it.IndexId, string.Format(ResUI.SpeedtestingTestFailedPart, 1));
+                delay = await TestMixedItemAsync(downloadHandle, it, blSpeedTest, GetMultiDelayTimeoutSeconds(), innerCt);
+                if (delay > 0)
                 {
-                    if (delay > 0)
-                    {
-                        await DoSpeedTest(downloadHandle, it, completedIds, innerCt);
-                    }
-                    else
-                    {
-                        await UpdateFunc(it.IndexId, "", ResUI.SpeedtestingSkip);
-                    }
+                    break;
                 }
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Logging.SaveLog(_tag, ex);
-            }
-            finally
-            {
-                if (processService != null)
-                {
-                    await processService.StopAsync();
-                }
-            }
+            completedIds.TryAdd(it.IndexId, 0);
         });
+    }
+
+    private async Task<int> TestMixedItemAsync(DownloadService downloadHandle, ServerTestItem it, bool blSpeedTest,
+        int delayTimeoutSeconds, CancellationToken ct = default)
+    {
+        ProcessService processService = null;
+        try
+        {
+            processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(it);
+            if (processService is null)
+            {
+                await UpdateFunc(it.IndexId, "", ResUI.FailedToRunCore);
+                return -1;
+            }
+
+            await Task.Delay(1000, ct);
+
+            var delay = await DoRealPing(it, null, ct, delayTimeoutSeconds);
+            if (blSpeedTest)
+            {
+                if (delay > 0)
+                {
+                    await DoSpeedTest(downloadHandle, it, ct);
+                }
+                else
+                {
+                    await UpdateFunc(it.IndexId, "", ResUI.SpeedtestingSkip);
+                }
+            }
+            return delay;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logging.SaveLog(_tag, ex);
+            return -1;
+        }
+        finally
+        {
+            if (processService != null)
+            {
+                await processService.StopAsync();
+            }
+        }
     }
 
     private async Task RunOpenCodeBatchAsync(List<ServerTestItem> lstSelected,
         ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
     {
-        var pageSize = Math.Clamp(_config.SpeedTestItem.MixedConcurrencyCount, 1, 4);
+        var pageSize = GetOpenCodeConcurrentCount();
         var lstTest = GetTestBatchItem(lstSelected, pageSize);
 
         foreach (var lst in lstTest)
@@ -636,10 +668,10 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
     }
 
     private async Task<int> DoRealPing(ServerTestItem it,
-        ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
+        ConcurrentDictionary<string, byte>? completedIds, CancellationToken ct = default, int timeoutSeconds = 0)
     {
         var webProxy = new WebProxy($"socks5://{Global.Loopback}:{it.Port}");
-        var responseTime = await ConnectionHandler.GetRealPingTime(webProxy, ct);
+        var responseTime = await ConnectionHandler.GetRealPingTime(webProxy, ct, timeoutSeconds > 0 ? timeoutSeconds : GetRealDelayTimeoutSeconds());
 
         ProfileExManager.Instance.SetTestDelay(it.IndexId, responseTime);
         await UpdateFunc(it.IndexId, responseTime.ToString());
@@ -656,18 +688,18 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             await UpdateIpInfoFunc(it.IndexId, ResUI.SpeedtestingSkip);
         }
 
-        completedIds.TryAdd(it.IndexId, 0);
+        completedIds?.TryAdd(it.IndexId, 0);
         return responseTime;
     }
 
     private async Task DoSpeedTest(DownloadService downloadHandle, ServerTestItem it,
-        ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
+        CancellationToken ct = default, int timeoutSeconds = 0)
     {
         await UpdateFunc(it.IndexId, "", ResUI.Speedtesting);
 
         var webProxy = new WebProxy($"socks5://{Global.Loopback}:{it.Port}");
         var url = _config.SpeedTestItem.SpeedTestUrl;
-        var timeout = _config.SpeedTestItem.SpeedTestTimeout;
+        var timeout = timeoutSeconds > 0 ? timeoutSeconds : GetMultiSpeedTimeoutSeconds();
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeout));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
         var linkedCt = linkedCts.Token;
@@ -680,7 +712,6 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             }
             await UpdateFunc(it.IndexId, "", msg);
         }, linkedCt);
-        completedIds.TryAdd(it.IndexId, 0);
     }
 
     private async Task<int> DoUdpTest(ServerTestItem it,
@@ -773,5 +804,61 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
     private async Task UpdateIpInfoFunc(string indexId, string ip)
     {
         await _updateFunc?.Invoke(new() { IndexId = indexId, IpInfo = ip });
+    }
+
+    private int GetRealDelayTimeoutSeconds()
+    {
+        var value = _config?.SpeedTestItem?.RealDelayTimeoutSeconds ?? 0;
+        return value > 0 ? Math.Clamp(value, Global.TestTimeoutSecondsMin, Global.TestTimeoutSecondsMax) : Global.RealDelayTimeoutSecondsDefault;
+    }
+
+    private int GetRealDelayConcurrentCount()
+    {
+        var value = _config?.SpeedTestItem?.RealDelayConcurrentCount ?? 0;
+        return value > 0 ? Math.Clamp(value, Global.SpeedTestConcurrencyCountMin, Global.SpeedTestConcurrencyCountMax) : Global.SpeedTestConcurrencyCountDefault;
+    }
+
+    private int GetRealDelayRetryCount()
+    {
+        var value = _config?.SpeedTestItem?.RealDelayRetryCount ?? Global.TestRetryCountDefault;
+        return Math.Clamp(value, Global.TestRetryCountMin, Global.TestRetryCountMax);
+    }
+
+    private int GetMultiDelayTimeoutSeconds()
+    {
+        var value = _config?.SpeedTestItem?.MultiDelayTimeoutSeconds ?? 0;
+        return value > 0 ? Math.Clamp(value, Global.TestTimeoutSecondsMin, Global.TestTimeoutSecondsMax) : Global.RealDelayTimeoutSecondsDefault;
+    }
+
+    private int GetMultiSpeedTimeoutSeconds()
+    {
+        var value = _config?.SpeedTestItem?.MultiSpeedTimeoutSeconds ?? 0;
+        if (value <= 0)
+        {
+            value = _config?.SpeedTestItem?.SpeedTestTimeout ?? 0;
+        }
+        return value > 0 ? Math.Clamp(value, Global.TestTimeoutSecondsMin, Global.TestTimeoutSecondsMax) : Global.TestTimeoutSecondsDefault;
+    }
+
+    private int GetMultiConcurrentCount()
+    {
+        var value = _config?.SpeedTestItem?.MultiConcurrentCount ?? 0;
+        if (value <= 0)
+        {
+            value = _config?.SpeedTestItem?.MixedConcurrencyCount ?? 0;
+        }
+        return value > 0 ? Math.Clamp(value, Global.SpeedTestConcurrencyCountMin, Global.SpeedTestConcurrencyCountMax) : Global.SpeedTestConcurrencyCountDefault;
+    }
+
+    private int GetMultiRetryCount()
+    {
+        var value = _config?.SpeedTestItem?.MultiRetryCount ?? Global.TestRetryCountDefault;
+        return Math.Clamp(value, Global.TestRetryCountMin, Global.TestRetryCountMax);
+    }
+
+    private int GetOpenCodeConcurrentCount()
+    {
+        var value = _config?.OpenCodeItem?.MaxConcurrentRequests ?? 0;
+        return value > 0 ? Math.Clamp(value, Global.OpenCodeMaxConcurrentMin, Global.OpenCodeMaxConcurrentMax) : Global.OpenCodeMaxConcurrentDefault;
     }
 }

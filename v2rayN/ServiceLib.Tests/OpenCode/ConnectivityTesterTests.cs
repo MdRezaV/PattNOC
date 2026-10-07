@@ -189,4 +189,25 @@ public class ConnectivityTesterTests
         await lines.Any(l => l.Contains("phase=stream")).Should().BeTrue();
         await lines.Any(l => l.Contains("phase=test")).Should().BeTrue();
     }
+
+    [Test]
+    public async Task FreeTier403_IsValidResult_NotRetried()
+    {
+        await using var logs = await OpenCodeLogTestScope.BeginAsync();
+        var handler = new StubHttpHandler(() => new HttpResponseMessage(HttpStatusCode.Forbidden)
+        {
+            Content = new StringContent(
+                """{"error":{"message":"FreeTierError: can only be used from within OpenCode","type":"forbidden"}}""",
+                Encoding.UTF8, "application/json"),
+        });
+        var provider = new StubProxyProvider();
+        var tester = CreateTester(provider, handler);
+
+        var result = await tester.TestAsync(Settings(maxRetry: 3), isTest: true);
+
+        await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.AuthorizationFailed);
+        await result.HttpStatus.Should().BeEqualTo(403);
+        await handler.CallCount.Should().BeEqualTo(1);
+        await logs.Lines.Any(l => l.Contains("phase=test") && l.Contains("ok=false")).Should().BeTrue();
+    }
 }

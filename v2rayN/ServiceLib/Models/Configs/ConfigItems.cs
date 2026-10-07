@@ -165,6 +165,14 @@ public class SpeedTestItem
     public string UdpTestTarget { get; set; }
     public int? SpeedTestPageSize { get; set; }
     public int? SpeedTestDelayInterval { get; set; }
+
+    public int RealDelayTimeoutSeconds { get; set; }
+    public int RealDelayConcurrentCount { get; set; }
+    public int RealDelayRetryCount { get; set; } = 1;
+    public int MultiDelayTimeoutSeconds { get; set; }
+    public int MultiSpeedTimeoutSeconds { get; set; }
+    public int MultiConcurrentCount { get; set; }
+    public int MultiRetryCount { get; set; } = 1;
 }
 
 [Serializable]

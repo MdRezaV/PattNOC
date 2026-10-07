@@ -1377,6 +1377,27 @@
   <data name="TbSettingsMixedConcurrencyCount" xml:space="preserve">
     <value>Niveau de concurrence lors des tests multithread</value>
   </data>
+  <data name="TbSettingsRealDelayTestTimeout" xml:space="preserve">
+    <value>Real Delay Test Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsRealDelayTestConcurrent" xml:space="preserve">
+    <value>Real Delay Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsRealDelayTestRetry" xml:space="preserve">
+    <value>Real Delay Test Retry Count</value>
+  </data>
+  <data name="TbSettingsMultiTestDelayTimeout" xml:space="preserve">
+    <value>Multi Test Delay Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestSpeedTimeout" xml:space="preserve">
+    <value>Multi Test Speed Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestConcurrent" xml:space="preserve">
+    <value>Multi Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsMultiTestRetry" xml:space="preserve">
+    <value>Multi Test Retry Count</value>
+  </data>
   <data name="TbSettingsExceptionTip2" xml:space="preserve">
     <value>Exceptions : ne pas utiliser le proxy pour ces adresses, séparées par des virgules (,).</value>
   </data>

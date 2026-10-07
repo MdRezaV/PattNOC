@@ -150,6 +150,7 @@ public static class ConfigHandler
             config.SpeedTestItem.MixedConcurrencyCount = Global.SpeedTestConcurrencyCountDefault;
         }
         config.SpeedTestItem.MixedConcurrencyCount = Math.Clamp(config.SpeedTestItem.MixedConcurrencyCount, Global.SpeedTestConcurrencyCountMin, Global.SpeedTestConcurrencyCountMax);
+        NormalizeTestExecutionOptions(config.SpeedTestItem);
         if (config.SpeedTestItem.UdpTestTarget.IsNullOrEmpty())
         {
             config.SpeedTestItem.UdpTestTarget = Global.UdpTestTargets.First();
@@ -211,6 +212,48 @@ public static class ConfigHandler
         }
 
         return config;
+    }
+
+    /// <summary>
+    /// Seeds and clamps per-test execution options (Real Delay, Multi), migrating
+    /// from legacy MixedConcurrencyCount/SpeedTestTimeout on first load.
+    /// </summary>
+    public static void NormalizeTestExecutionOptions(SpeedTestItem item)
+    {
+        if (item.RealDelayTimeoutSeconds <= 0)
+        {
+            item.RealDelayTimeoutSeconds = Global.RealDelayTimeoutSecondsDefault;
+        }
+        if (item.RealDelayConcurrentCount <= 0)
+        {
+            item.RealDelayConcurrentCount = item.MixedConcurrencyCount > 0
+                ? item.MixedConcurrencyCount
+                : Global.SpeedTestConcurrencyCountDefault;
+        }
+        if (item.MultiDelayTimeoutSeconds <= 0)
+        {
+            item.MultiDelayTimeoutSeconds = Global.RealDelayTimeoutSecondsDefault;
+        }
+        if (item.MultiSpeedTimeoutSeconds <= 0)
+        {
+            item.MultiSpeedTimeoutSeconds = item.SpeedTestTimeout >= Global.TestTimeoutSecondsMin
+                ? item.SpeedTestTimeout
+                : Global.TestTimeoutSecondsDefault;
+        }
+        if (item.MultiConcurrentCount <= 0)
+        {
+            item.MultiConcurrentCount = item.MixedConcurrencyCount > 0
+                ? item.MixedConcurrencyCount
+                : Global.SpeedTestConcurrencyCountDefault;
+        }
+
+        item.RealDelayTimeoutSeconds = Math.Clamp(item.RealDelayTimeoutSeconds, Global.TestTimeoutSecondsMin, Global.TestTimeoutSecondsMax);
+        item.MultiDelayTimeoutSeconds = Math.Clamp(item.MultiDelayTimeoutSeconds, Global.TestTimeoutSecondsMin, Global.TestTimeoutSecondsMax);
+        item.MultiSpeedTimeoutSeconds = Math.Clamp(item.MultiSpeedTimeoutSeconds, Global.TestTimeoutSecondsMin, Global.TestTimeoutSecondsMax);
+        item.RealDelayConcurrentCount = Math.Clamp(item.RealDelayConcurrentCount, Global.SpeedTestConcurrencyCountMin, Global.SpeedTestConcurrencyCountMax);
+        item.MultiConcurrentCount = Math.Clamp(item.MultiConcurrentCount, Global.SpeedTestConcurrencyCountMin, Global.SpeedTestConcurrencyCountMax);
+        item.RealDelayRetryCount = Math.Clamp(item.RealDelayRetryCount, Global.TestRetryCountMin, Global.TestRetryCountMax);
+        item.MultiRetryCount = Math.Clamp(item.MultiRetryCount, Global.TestRetryCountMin, Global.TestRetryCountMax);
     }
 
     /// <summary>

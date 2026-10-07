@@ -96,6 +96,16 @@ public class Global
     public const int SpeedTestConcurrencyCountMin = 1;
     public const int SpeedTestConcurrencyCountMax = 30;
     public const int SpeedTestConcurrencyCountDefault = 10;
+    public const int TestTimeoutSecondsMin = 5;
+    public const int TestTimeoutSecondsMax = 300;
+    public const int TestTimeoutSecondsDefault = 10;
+    public const int TestRetryCountMin = 0;
+    public const int TestRetryCountMax = 3;
+    public const int TestRetryCountDefault = 1;
+    public const int RealDelayTimeoutSecondsDefault = 5;
+    public const int OpenCodeMaxConcurrentMin = 1;
+    public const int OpenCodeMaxConcurrentMax = 30;
+    public const int OpenCodeMaxConcurrentDefault = 8;
     public const string LinuxBash = "/bin/bash";
     public const string StringTrue = "true";
     public const string StringFalse = "false";

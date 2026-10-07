@@ -1386,6 +1386,27 @@
   <data name="TbSettingsMixedConcurrencyCount" xml:space="preserve">
     <value>تعداد همزمان در طول چند آزمون</value>
   </data>
+  <data name="TbSettingsRealDelayTestTimeout" xml:space="preserve">
+    <value>Real Delay Test Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsRealDelayTestConcurrent" xml:space="preserve">
+    <value>Real Delay Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsRealDelayTestRetry" xml:space="preserve">
+    <value>Real Delay Test Retry Count</value>
+  </data>
+  <data name="TbSettingsMultiTestDelayTimeout" xml:space="preserve">
+    <value>Multi Test Delay Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestSpeedTimeout" xml:space="preserve">
+    <value>Multi Test Speed Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestConcurrent" xml:space="preserve">
+    <value>Multi Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsMultiTestRetry" xml:space="preserve">
+    <value>Multi Test Retry Count</value>
+  </data>
   <data name="TbSettingsExceptionTip2" xml:space="preserve">
     <value>موارد استثنا: از سرور پروکسی برای آدرس های زیر استفاده نکنید. برای جدا کردن ورودی ها از کاما (،) استفاده کنید.</value>
   </data>

@@ -15,10 +15,11 @@ public sealed class ConnectivityTester
         OpenCodeItem settings,
         string? targetId = null,
         string? modelRef = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        bool isTest = false)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var result = await TestCoreAsync(settings, targetId, modelRef, sw, ct);
+        var result = await TestCoreAsync(settings, targetId, modelRef, sw, isTest, ct);
         sw.Stop();
 
         // Every test — pass or fail — leaves one line behind.
@@ -40,6 +41,7 @@ public sealed class ConnectivityTester
         string? targetId,
         string? modelRef,
         System.Diagnostics.Stopwatch sw,
+        bool isTest,
         CancellationToken ct)
     {
         string? profileRemark = null;
@@ -81,7 +83,7 @@ public sealed class ConnectivityTester
                 Stream = true,
             };
 
-            var result = await _executor.ExecuteAsync(request, settings, ct);
+            var result = await _executor.ExecuteAsync(request, settings, ct, allowSessionRefresh: !isTest);
             profileRemark = result.Route?.ProfileRemark;
             sw.Stop();
 
