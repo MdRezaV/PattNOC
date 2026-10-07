@@ -10,6 +10,14 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
 
     public EOpenCodeApiStyle Style => EOpenCodeApiStyle.Responses;
 
+    // Strict Responses backends reject overlong call_ids and nameless tools.
+    private const int MaxCallIdLength = 64;
+    private const int MaxToolNameLength = 128;
+
+    // Quartet rename map produced by the last free-tier BuildRequest: sent name
+    // → the caller's spelling. See ChatCompletionsAdapter.
+    private IReadOnlyDictionary<string, string>? _renamedTools;
+
     public HttpRequestMessage BuildRequest(
         NormalizedCompletionRequest req,
         OpenCodeTargetItem target,
@@ -18,9 +26,10 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
     {
         var body = BuildBody(req);
         // See ChatCompletionsAdapter: body shaping applies to free-tier only.
+        _renamedTools = null;
         if (apiKey.IsNullOrEmpty() && OpenCodeFreeTier.IsFreeTierTarget(target))
         {
-            OpenCodeFreeTier.ApplyBodyShape(body, Style);
+            _renamedTools = OpenCodeFreeTier.ApplyBodyShape(body, Style);
         }
 
         var url = OpenCodeUrl.Combine(target.BaseUrl, "/responses");
@@ -33,6 +42,19 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
     }
 
     public async IAsyncEnumerable<NormalizedStreamEvent> TranslateStreamAsync(
+        HttpResponseMessage response,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        var renames = _renamedTools;
+        await foreach (var evt in TranslateStreamCoreAsync(response, ct))
+        {
+            yield return evt.ToolName is null
+                ? evt
+                : evt with { ToolName = OpenCodeFingerprintTools.Restore(renames, evt.ToolName) };
+        }
+    }
+
+    private async IAsyncEnumerable<NormalizedStreamEvent> TranslateStreamCoreAsync(
         HttpResponseMessage response,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
@@ -333,6 +355,7 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
             }
         }
 
+        OpenCodeFingerprintTools.RestoreResponseToolNames(_renamedTools, result);
         return result;
     }
 
@@ -384,6 +407,8 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
         {
             body["tool_choice"] = toolChoice;
         }
+
+        NormalizeResponsesTools(body);
 
         if (req.ResponseFormatType.IsNotEmpty() && !req.ResponseFormatType.Equals("text", StringComparison.OrdinalIgnoreCase))
         {
@@ -444,12 +469,19 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
 
                 foreach (var tc in m.ToolCalls)
                 {
+                    var name = tc.Function?.Name?.Trim() ?? "";
+                    if (name.Length == 0)
+                    {
+                        // The /responses endpoint rejects nameless function_call items.
+                        continue;
+                    }
+
                     input.Add(new Dictionary<string, object?>
                     {
                         ["type"] = "function_call",
-                        ["call_id"] = tc.Id,
-                        ["name"] = tc.Function?.Name ?? "",
-                        ["arguments"] = tc.Function?.Arguments ?? "",
+                        ["call_id"] = ClampCallId(tc.Id),
+                        ["name"] = name.Length > MaxToolNameLength ? name[..MaxToolNameLength] : name,
+                        ["arguments"] = CoerceResponsesArguments(tc.Function?.Arguments),
                     });
                 }
 
@@ -461,7 +493,7 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
                 input.Add(new Dictionary<string, object?>
                 {
                     ["type"] = "function_call_output",
-                    ["call_id"] = m.ToolCallId,
+                    ["call_id"] = ClampCallId(m.ToolCallId),
                     ["output"] = m.Content ?? "",
                 });
                 continue;
@@ -475,6 +507,123 @@ public sealed class ResponsesAdapter : IUpstreamAdapter
         }
 
         return input;
+    }
+
+    /// <summary>
+    /// Strict Responses upstreams reject overlong call_ids with InputValidationError.
+    /// </summary>
+    private static string ClampCallId(string? id)
+    {
+        if (id.IsNullOrEmpty())
+        {
+            return "call_" + Guid.NewGuid().ToString("N");
+        }
+
+        return id.Length > MaxCallIdLength ? id[..MaxCallIdLength] : id;
+    }
+
+    /// <summary>Valid JSON arguments pass through; missing or broken input becomes "{}".</summary>
+    private static string CoerceResponsesArguments(string? value)
+    {
+        if (value.IsNullOrEmpty())
+        {
+            return "{}";
+        }
+
+        try
+        {
+            using var _ = JsonDocument.Parse(value);
+            return value;
+        }
+        catch (JsonException)
+        {
+            return "{}";
+        }
+    }
+
+    /// <summary>
+    /// Port of 9Router's normalizeResponsesTools: drop nameless declarations the
+    /// /responses endpoint rejects, give every object schema an empty
+    /// `properties` map ({type:"object"} without one is rejected by strict
+    /// backends), and drop a named tool_choice that no longer resolves.
+    /// </summary>
+    private static void NormalizeResponsesTools(Dictionary<string, object?> body)
+    {
+        if (!body.TryGetValue("tools", out var toolsValue) || toolsValue is not List<Dictionary<string, object?>> tools)
+        {
+            return;
+        }
+
+        var validNames = new HashSet<string>(StringComparer.Ordinal);
+        var kept = new List<object?>();
+        foreach (var tool in tools)
+        {
+            if (!tool.TryGetValue("name", out var nameObj) || nameObj is not string raw)
+            {
+                continue;
+            }
+
+            var name = raw.Trim();
+            if (name.Length == 0)
+            {
+                continue;
+            }
+
+            var normalized = new Dictionary<string, object?>(tool)
+            {
+                ["type"] = "function",
+                ["name"] = name.Length > MaxToolNameLength ? name[..MaxToolNameLength] : name,
+            };
+            normalized["parameters"] = EnsureParametersObject(normalized.GetValueOrDefault("parameters"));
+
+            validNames.Add((string)normalized["name"]!);
+            kept.Add(normalized);
+        }
+
+        body["tools"] = kept;
+
+        if (body.TryGetValue("tool_choice", out var tc) && tc is Dictionary<string, object?> choice
+            && choice.TryGetValue("type", out var ctype) && ctype is "function"
+            && choice.TryGetValue("name", out var cn) && cn is string cname
+            && !validNames.Contains(cname))
+        {
+            body.Remove("tool_choice");
+        }
+    }
+
+    /// <summary>Missing parameters default to an empty object schema; object schemas gain an empty properties map.</summary>
+    private static object? EnsureParametersObject(object? parameters)
+    {
+        var emptySchema = new Dictionary<string, object?>
+        {
+            ["type"] = "object",
+            ["properties"] = new Dictionary<string, object?>(),
+        };
+
+        if (parameters is not JsonElement el || el.ValueKind != JsonValueKind.Object)
+        {
+            return parameters ?? emptySchema;
+        }
+
+        if (el.TryGetProperty("properties", out _))
+        {
+            return el;
+        }
+
+        if (!el.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String
+            || !type.GetString().Equals("object", StringComparison.Ordinal))
+        {
+            return el;
+        }
+
+        var node = JsonSerializer.SerializeToNode(el) as JsonObject;
+        if (node is null)
+        {
+            return el;
+        }
+
+        node["properties"] = new JsonObject();
+        return node;
     }
 
     private static Dictionary<string, object?> ToolToWire(NormalizedTool t)

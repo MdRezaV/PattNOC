@@ -14,6 +14,12 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
 
     public EOpenCodeApiStyle Style => EOpenCodeApiStyle.ChatCompletions;
 
+    // Quartet rename map produced by the last free-tier BuildRequest: sent name
+    // → the caller's spelling. Mirrors 9Router's request-local map (WeakMap on
+    // the body): applied on the way out, consumed on the way back so the agent
+    // still recognises its own tool calls.
+    private IReadOnlyDictionary<string, string>? _renamedTools;
+
     public HttpRequestMessage BuildRequest(
         NormalizedCompletionRequest req,
         OpenCodeTargetItem target,
@@ -24,9 +30,10 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
         // Body shaping is a free-tier (unauthenticated) behavior only. A keyed
         // target must keep the caller's real tools, tool_choice, and sampling
         // fields or agents like Claude Code can never invoke their own tools.
+        _renamedTools = null;
         if (apiKey.IsNullOrEmpty() && OpenCodeFreeTier.IsFreeTierTarget(target))
         {
-            OpenCodeFreeTier.ApplyBodyShape(body, Style);
+            _renamedTools = OpenCodeFreeTier.ApplyBodyShape(body, Style);
         }
 
         var url = OpenCodeUrl.Combine(target.BaseUrl, "/chat/completions");
@@ -39,6 +46,19 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
     }
 
     public async IAsyncEnumerable<NormalizedStreamEvent> TranslateStreamAsync(
+        HttpResponseMessage response,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        var renames = _renamedTools;
+        await foreach (var evt in TranslateStreamCoreAsync(response, ct))
+        {
+            yield return evt.ToolName is null
+                ? evt
+                : evt with { ToolName = OpenCodeFingerprintTools.Restore(renames, evt.ToolName) };
+        }
+    }
+
+    private async IAsyncEnumerable<NormalizedStreamEvent> TranslateStreamCoreAsync(
         HttpResponseMessage response,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
@@ -253,6 +273,7 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
             }
         }
 
+        OpenCodeFingerprintTools.RestoreResponseToolNames(_renamedTools, result);
         return result;
     }
 

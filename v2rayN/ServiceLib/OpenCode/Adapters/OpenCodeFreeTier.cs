@@ -93,56 +93,25 @@ internal static class OpenCodeFreeTier
         "stop",
     ];
 
-    internal static void ApplyBodyShape(Dictionary<string, object?> body, EOpenCodeApiStyle apiStyle)
+    internal static IReadOnlyDictionary<string, string> ApplyBodyShape(
+        Dictionary<string, object?> body, EOpenCodeApiStyle apiStyle)
     {
-        // Mirror the official OpenCode desktop client fingerprint body:
-        // four unavailable core tools sorted alphabetically, tool_choice per API style,
-        // and none of the sampling, length, or identity fields a third-party client adds.
-        body["tools"] = new List<object?>
-        {
-            CreateUnavailableTool("bash", apiStyle),
-            CreateUnavailableTool("glob", apiStyle),
-            CreateUnavailableTool("grep", apiStyle),
-            CreateUnavailableTool("read", apiStyle),
-        };
-        // Responses API upstream only accepts "auto" for tool_choice; Chat Completions
-        // free-tier fingerprint uses "none".
-        body["tool_choice"] = apiStyle == EOpenCodeApiStyle.Responses ? "auto" : "none";
+        // Preserve the caller's tools while satisfying the free-tier gate on the
+        // lowercase file-search quartet. Returns the quartet rename map
+        // (sent name → caller's name) so the response path can hand the agent
+        // its own tool spellings back.
+        var renamed = OpenCodeFingerprintTools.Apply(
+            body, apiStyle == EOpenCodeApiStyle.Responses);
+
+        // Zen rejects non-streaming requests on the free tier, so always stream
+        // upstream even for non-streaming clients (answers are aggregated).
+        body["stream"] = true;
 
         foreach (var key in ClientOnlyFields)
         {
             body.Remove(key);
         }
-    }
 
-    private static Dictionary<string, object?> CreateUnavailableTool(string name, EOpenCodeApiStyle apiStyle)
-    {
-        var description = "This tool is currently unavailable and must not be used.";
-        var parameters = new Dictionary<string, object?>
-        {
-            ["type"] = "object",
-            ["properties"] = new Dictionary<string, object?>(),
-        };
-
-        return apiStyle switch
-        {
-            EOpenCodeApiStyle.Responses => new Dictionary<string, object?>
-            {
-                ["type"] = "function",
-                ["name"] = name,
-                ["description"] = description,
-                ["parameters"] = parameters,
-            },
-            _ => new Dictionary<string, object?>
-            {
-                ["type"] = "function",
-                ["function"] = new Dictionary<string, object?>
-                {
-                    ["name"] = name,
-                    ["description"] = description,
-                    ["parameters"] = parameters,
-                },
-            },
-        };
+        return renamed;
     }
 }

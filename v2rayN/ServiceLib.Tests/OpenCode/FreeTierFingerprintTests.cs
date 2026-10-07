@@ -69,6 +69,12 @@ public class FreeTierFingerprintTests
         var copy = (JsonObject)body.DeepClone();
         copy.Remove("model");
         copy.Remove("messages");
+        // The tools block is caller-specific: the connectivity test sends none, an
+        // agent sends its own (the quartet is canonicalised but descriptions and
+        // extra tools survive). tool_choice follows from that, so both are pinned
+        // by separate tests — the envelope itself must still match.
+        copy.Remove("tools");
+        copy.Remove("tool_choice");
         return copy;
     }
 
@@ -106,13 +112,18 @@ public class FreeTierFingerprintTests
         await string.Join(",", leaked).Should().BeEqualTo("");
 
         // "user" survives only as a message role, never as a top-level identity field.
-        await body["tool_choice"]!.GetValue<string>().Should().BeEqualTo("none");
+        // The caller brought its own tools, so no tool_choice is forced.
+        await body.ContainsKey("tool_choice").Should().BeFalse();
         await body["stream"]!.GetValue<bool>().Should().BeTrue();
 
+        // Claude Code's Bash/Read are canonicalised to bash/read rather than
+        // duplicated, glob/grep are appended, and the caller's descriptions —
+        // not the unavailable decoys — survive.
         var tools = body["tools"]!.AsArray();
         await tools.Count.Should().BeEqualTo(4);
         var names = tools.Select(t => t!["function"]!["name"]!.GetValue<string>()).OrderBy(n => n);
         await string.Join(",", names).Should().BeEqualTo("bash,glob,grep,read");
+        await body.ToJsonString().Should().Contain("Run a shell command");
     }
 
     [Test]
@@ -127,5 +138,127 @@ public class FreeTierFingerprintTests
         await client!.First().Should().BeEqualTo("desktop");
         await msg.Headers.TryGetValues("User-Agent", out var ua).Should().BeTrue();
         await ua!.First().Should().BeEqualTo("opencode/1.18.31");
+    }
+
+    [Test]
+    public async Task FreeTier_QuartetCaseDuplicates_CollapseToSingleCanonicalName()
+    {
+        // `Bash` + `bash` is rejected upstream as a duplicate, so both collapse to
+        // one canonical declaration instead of doubling the tools block.
+        var req = new NormalizedCompletionRequest
+        {
+            Model = "big-pickle",
+            Messages = [new NormalizedMessage { Role = "user", Content = "Reply with OK." }],
+            Stream = true,
+            Tools =
+            [
+                new NormalizedTool
+                {
+                    Type = "function",
+                    Function = new NormalizedFunctionDef { Name = "Bash", Description = "caller shell" },
+                },
+                new NormalizedTool
+                {
+                    Type = "function",
+                    Function = new NormalizedFunctionDef { Name = "bash", Description = "second shell" },
+                },
+            ],
+        };
+
+        var body = await BuildWireBody(req);
+        var names = body["tools"]!.AsArray()
+            .Select(t => t!["function"]!["name"]!.GetValue<string>())
+            .OrderBy(n => n);
+        await string.Join(",", names).Should().BeEqualTo("bash,glob,grep,read");
+    }
+
+    [Test]
+    public async Task FreeTier_ExplicitToolChoiceOnRenamedQuartet_IsRetargeted()
+    {
+        // The caller forces its own `Bash`; the wire request must name the
+        // canonical `bash` and leave every other explicit choice untouched.
+        var req = new NormalizedCompletionRequest
+        {
+            Model = "big-pickle",
+            Messages = [new NormalizedMessage { Role = "user", Content = "Reply with OK." }],
+            Stream = true,
+            ToolChoice = "Bash",
+            Tools =
+            [
+                new NormalizedTool
+                {
+                    Type = "function",
+                    Function = new NormalizedFunctionDef { Name = "Bash", Description = "caller shell" },
+                },
+                new NormalizedTool
+                {
+                    Type = "function",
+                    Function = new NormalizedFunctionDef { Name = "get_weather", Description = "Get weather" },
+                },
+            ],
+        };
+
+        var body = await BuildWireBody(req);
+        await body["tool_choice"]!["function"]!["name"]!.GetValue<string>().Should().BeEqualTo("bash");
+    }
+
+    [Test]
+    public async Task FreeTier_ExplicitToolChoiceOnOwnTool_IsPreserved()
+    {
+        var req = new NormalizedCompletionRequest
+        {
+            Model = "big-pickle",
+            Messages = [new NormalizedMessage { Role = "user", Content = "Reply with OK." }],
+            Stream = true,
+            ToolChoice = "get_weather",
+            Tools =
+            [
+                new NormalizedTool
+                {
+                    Type = "function",
+                    Function = new NormalizedFunctionDef { Name = "get_weather", Description = "Get weather" },
+                },
+            ],
+        };
+
+        var body = await BuildWireBody(req);
+        await body["tool_choice"]!["function"]!["name"]!.GetValue<string>().Should().BeEqualTo("get_weather");
+    }
+
+    [Test]
+    public async Task FreeTier_RestoresCallerToolSpelling_OnMaterializedToolCalls()
+    {
+        // The model answers with the canonical `bash`; the agent declared `Bash`
+        // and must get its own spelling back so it recognises the call.
+        var req = new NormalizedCompletionRequest
+        {
+            Model = "big-pickle",
+            Messages = [new NormalizedMessage { Role = "user", Content = "Run ls." }],
+            Stream = false,
+            Tools =
+            [
+                new NormalizedTool
+                {
+                    Type = "function",
+                    Function = new NormalizedFunctionDef { Name = "Bash", Description = "Run a shell command" },
+                },
+            ],
+        };
+
+        var adapter = new ChatCompletionsAdapter();
+        using var wire = adapter.BuildRequest(req, Target(), null, "req1");
+
+        var upstream = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                """{"id":"chatcmpl-1","model":"big-pickle","choices":[{"finish_reason":"tool_calls","message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"bash","arguments":"{\"command\":\"ls\"}"}}]}}]}""",
+                Encoding.UTF8,
+                "application/json"),
+        };
+
+        var result = await adapter.MaterializeAsync(upstream, CancellationToken.None);
+        await result.ToolCalls!.Count.Should().BeEqualTo(1);
+        await result.ToolCalls[0].Function!.Name.Should().BeEqualTo("Bash");
+        await result.ToolCalls[0].Function.Arguments.Should().BeEqualTo("{\"command\":\"ls\"}");
     }
 }

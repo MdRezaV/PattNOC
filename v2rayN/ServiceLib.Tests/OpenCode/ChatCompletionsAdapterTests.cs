@@ -155,6 +155,9 @@ public class ChatCompletionsAdapterTests
         // the official OpenCode client never sends. The free tier fingerprints the whole
         // envelope, not just the tools block, so all of them must be dropped before the
         // request leaves the gateway — otherwise upstream answers FreeTierError.
+        // The caller's own tools are NOT fingerprintable (9Router preserves them and
+        // only canonicalises the quartet), so get_weather survives while the quartet
+        // is appended around it.
         var req = Request(stream: true, maxTokens: 32000, user: "claude-code") with
         {
             Temperature = 0.7,
@@ -182,9 +185,11 @@ public class ChatCompletionsAdapterTests
         await json.Should().NotContain("max_tokens");
         // "user" also appears as a message role, so match the injected identity field.
         await json.Should().NotContain("\"user\":\"claude-code\"");
-        await json.Should().NotContain("get_weather");
+        await json.Should().Contain("get_weather");
 
-        await json.Should().Contain("\"tool_choice\":\"none\"");
+        // The caller brought its own tools, so no tool_choice is forced — forcing
+        // "none" would silently disable the agent's tools.
+        await json.Should().NotContain("tool_choice");
         await json.Should().Contain("\"name\":\"bash\"");
         await json.Should().Contain("\"role\":\"user\"");
     }
