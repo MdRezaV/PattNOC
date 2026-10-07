@@ -54,7 +54,9 @@ public class DownloaderHelper
         return await reader.ReadToEndAsync(cancellationToken);
     }
 
-    public async Task DownloadDataAsync4Speed(IWebProxy webProxy, string url, Action<string> onProgress, CancellationToken cancellationToken = default)
+    /// <returns>True only when a speed was actually measured; a download that
+    /// errored or produced no number is a failed test, not a zero one.</returns>
+    public async Task<bool> DownloadDataAsync4Speed(IWebProxy webProxy, string url, Action<string> onProgress, CancellationToken cancellationToken = default)
     {
         if (url.IsNullOrEmpty())
         {
@@ -116,6 +118,7 @@ public class DownloaderHelper
         };
         //progress.Invoke("......");
         await using var stream = await downloader.DownloadFileTaskAsync(address: url, cancellationToken);
+        return maxSpeed > 0;
     }
 
     public async Task DownloadFileAsync(IWebProxy? webProxy, FileDownloadRequest request, Action<FileDownloadState> onProgress, CancellationToken cancellationToken = default)

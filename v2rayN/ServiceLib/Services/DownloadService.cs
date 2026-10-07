@@ -20,11 +20,14 @@ public class DownloadService
     /// <summary>
     /// Downloads data with the specified proxy and reports progress messages.
     /// </summary>
-    public async Task<int> DownloadDataAsync(string url, IWebProxy webProxy, Func<bool, string, Task> updateFunc, CancellationToken cancellationToken = default)
+    /// <returns>True when the transfer produced a result. Errors are reported
+    /// through <paramref name="updateFunc"/> and return false so a failed speed
+    /// test can be retried instead of looking like a zero measurement.</returns>
+    public async Task<bool> DownloadDataAsync(string url, IWebProxy webProxy, Func<bool, string, Task> updateFunc, CancellationToken cancellationToken = default)
     {
         try
         {
-            await DownloaderHelper.Instance.DownloadDataAsync4Speed(webProxy,
+            return await DownloaderHelper.Instance.DownloadDataAsync4Speed(webProxy,
                   url,
                   OnProgress,
                   cancellationToken);
@@ -46,8 +49,8 @@ public class DownloadService
             {
                 await updateFunc.Invoke(false, ex.InnerException.Message);
             }
+            return false;
         }
-        return 0;
     }
 
     /// <summary>

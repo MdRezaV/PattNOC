@@ -171,11 +171,6 @@ public sealed class RequestExecutor
 
             for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                if (attempt > 1)
-                {
-                    _telemetry.RecordRetry();
-                }
-
                 using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 timeoutCts.CancelAfter(TimeSpan.FromSeconds(Math.Max(5, settings.RequestTimeoutSeconds)));
                 var attemptSw = System.Diagnostics.Stopwatch.StartNew();
@@ -256,6 +251,7 @@ public sealed class RequestExecutor
                         var action = DecideNext(isLastCandidate, state, attempt, maxAttempts);
                         if (action == NextAction.Retry)
                         {
+                            _telemetry.RecordRetry();
                             continue;
                         }
 
@@ -298,12 +294,30 @@ public sealed class RequestExecutor
                 }
                 catch (OperationCanceledException)
                 {
+                    // The attempt budget ran out without a transport error: a
+                    // timeout is an actual failure, so it follows the same
+                    // retry decision as every other transient state instead of
+                    // returning early and ignoring MaxRetry.
                     attemptSw.Stop();
                     var err = new OpenCodeError("server_error", "Request timed out.", null, null, "timeout");
-                    _telemetry.RecordFailure("timeout");
+                    var failure = FailResult(EOpenCodeConnectivityState.Timeout, err, route, 504);
                     LogAttempt(requestId, route, attempt, null,
                         EOpenCodeConnectivityState.Timeout, attemptSw.ElapsedMilliseconds, err.Message);
-                    return FailResult(EOpenCodeConnectivityState.Timeout, err, route, 504);
+
+                    if (ci == 0)
+                    {
+                        preferredFailure = failure;
+                    }
+
+                    var action = DecideNext(isLastCandidate, EOpenCodeConnectivityState.Timeout, attempt, maxAttempts);
+                    if (action == NextAction.Retry)
+                    {
+                        _telemetry.RecordRetry();
+                        continue;
+                    }
+
+                    _telemetry.RecordFailure("timeout");
+                    return preferredFailure ?? failure;
                 }
                 catch (Exception ex)
                 {
@@ -322,6 +336,7 @@ public sealed class RequestExecutor
                     var action = DecideNext(isLastCandidate, state, attempt, maxAttempts);
                     if (action == NextAction.Retry)
                     {
+                        _telemetry.RecordRetry();
                         continue;
                     }
 

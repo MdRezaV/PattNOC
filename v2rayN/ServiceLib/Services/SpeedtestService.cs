@@ -107,12 +107,11 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                     break;
 
                 case ESpeedActionType.Speedtest:
-                    await RunMixedTestAsync(lstSelected, completedIds, 1, true, ct);
+                    await RunMixedTestAsync(lstSelected, completedIds, 1, ct);
                     break;
 
                 case ESpeedActionType.Mixedtest:
-                    await RunMixedTestAsync(lstSelected, completedIds, GetMultiConcurrentCount(), true,
-                        ct);
+                    await RunMixedTestAsync(lstSelected, completedIds, GetMultiConcurrentCount(), ct);
                     break;
 
                 case ESpeedActionType.OpenCodetest:
@@ -269,7 +268,8 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             await Task.Delay(_delayInterval, ct);
         }
 
-        //Retry the failed part
+        //Retry the failed part, in the same concurrency-sized batches as the
+        //first pass so one core process never inherits the whole failed list.
         for (var retry = 0; retry < retryCount && lstFailed.Count > 0; retry++)
         {
             ct.ThrowIfCancellationRequested();
@@ -278,8 +278,25 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
 
             var retryList = lstFailed;
             lstFailed = [];
-            var failed = await RunRealPingAsync(retryList, completedIds, ct);
-            lstFailed.AddRange(failed ?? retryList);
+            foreach (var batch in GetTestBatchItem(retryList, pageSize))
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var failed = await RunRealPingAsync(batch, completedIds, ct);
+                lstFailed.AddRange(failed ?? batch);
+                await Task.Delay(_delayInterval, ct);
+            }
+        }
+    }
+
+    //Core never came up: these items still hold the initial "Testing"
+    //placeholder, so write a result for them or the row never resolves
+    //(nothing rewrites it when Retry Count is 0).
+    private async Task MarkRealPingFailedAsync(List<ServerTestItem> selecteds)
+    {
+        foreach (var it in selecteds)
+        {
+            await UpdateFunc(it.IndexId, ResUI.FailedToRunCore);
         }
     }
 
@@ -292,6 +309,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(selecteds);
             if (processService is null)
             {
+                await MarkRealPingFailedAsync(selecteds);
                 return null;
             }
             await Task.Delay(1000, ct);
@@ -339,6 +357,10 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
+            // LoadCoreConfigSpeedtest failed outright: nothing was written for
+            // these items yet, so surface a result instead of leaving the row
+            // on its initial "Testing" placeholder.
+            await MarkRealPingFailedAsync(selecteds);
             return null;
         }
         finally
@@ -441,7 +463,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
     }
 
     private async Task RunMixedTestAsync(List<ServerTestItem> selecteds,
-        ConcurrentDictionary<string, byte> completedIds, int concurrencyCount, bool blSpeedTest,
+        ConcurrentDictionary<string, byte> completedIds, int concurrencyCount,
         CancellationToken ct = default)
     {
         var downloadHandle = new DownloadService();
@@ -456,8 +478,11 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         {
             innerCt.ThrowIfCancellationRequested();
 
-            var delay = await TestMixedItemAsync(downloadHandle, it, blSpeedTest, GetMultiDelayTimeoutSeconds(), innerCt);
-            if (delay > 0 || !blSpeedTest)
+            // TestMixedItemAsync reports any failed phase as a non-positive
+            // result, so a speed timeout or dead endpoint reaches the retries
+            // below just like a failed ping does.
+            var delay = await TestMixedItemAsync(downloadHandle, it, GetMultiDelayTimeoutSeconds(), innerCt);
+            if (delay > 0)
             {
                 completedIds.TryAdd(it.IndexId, 0);
                 return;
@@ -467,8 +492,8 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             for (var retry = 0; retry < retryCount; retry++)
             {
                 innerCt.ThrowIfCancellationRequested();
-                await UpdateFunc(it.IndexId, string.Format(ResUI.SpeedtestingTestFailedPart, 1));
-                delay = await TestMixedItemAsync(downloadHandle, it, blSpeedTest, GetMultiDelayTimeoutSeconds(), innerCt);
+                await UpdateFunc(it.IndexId, ResUI.Speedtesting);
+                delay = await TestMixedItemAsync(downloadHandle, it, GetMultiDelayTimeoutSeconds(), innerCt);
                 if (delay > 0)
                 {
                     break;
@@ -478,7 +503,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         });
     }
 
-    private async Task<int> TestMixedItemAsync(DownloadService downloadHandle, ServerTestItem it, bool blSpeedTest,
+    private async Task<int> TestMixedItemAsync(DownloadService downloadHandle, ServerTestItem it,
         int delayTimeoutSeconds, CancellationToken ct = default)
     {
         ProcessService processService = null;
@@ -494,17 +519,20 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             await Task.Delay(1000, ct);
 
             var delay = await DoRealPing(it, null, ct, delayTimeoutSeconds);
-            if (blSpeedTest)
+            if (delay <= 0)
             {
-                if (delay > 0)
-                {
-                    await DoSpeedTest(downloadHandle, it, ct);
-                }
-                else
-                {
-                    await UpdateFunc(it.IndexId, "", ResUI.SpeedtestingSkip);
-                }
+                await UpdateFunc(it.IndexId, "", ResUI.SpeedtestingSkip);
+                return delay;
             }
+
+            // A ping that worked but produced no speed is still a failed test:
+            // report it as such instead of returning a healthy delay the caller
+            // would read as success and never retry.
+            if (!await DoSpeedTest(downloadHandle, it, ct))
+            {
+                return -1;
+            }
+
             return delay;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -692,7 +720,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         return responseTime;
     }
 
-    private async Task DoSpeedTest(DownloadService downloadHandle, ServerTestItem it,
+    private async Task<bool> DoSpeedTest(DownloadService downloadHandle, ServerTestItem it,
         CancellationToken ct = default, int timeoutSeconds = 0)
     {
         await UpdateFunc(it.IndexId, "", ResUI.Speedtesting);
@@ -703,7 +731,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeout));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
         var linkedCt = linkedCts.Token;
-        await downloadHandle.DownloadDataAsync(url, webProxy, async (success, msg) =>
+        return await downloadHandle.DownloadDataAsync(url, webProxy, async (success, msg) =>
         {
             decimal.TryParse(msg, out var dec);
             if (dec > 0)
