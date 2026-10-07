@@ -24,16 +24,100 @@ public sealed class ModelCatalog
         {
             if (_cache.ModelsByTarget.TryGetValue(targetId, out var cached) && cached.Count > 0)
             {
-                return cached;
+                return ApplyNegotiatedStyles(targetId, cached);
             }
         }
 
-        if (targetId.Equals(TargetCatalogDefaults.OpenCodeFreeTargetId, StringComparison.OrdinalIgnoreCase))
+        return [];
+    }
+
+    /// <summary>
+    /// Ordered upstream formats to try for this model on this target: the known
+    /// (negotiated or catalog) style first, then every other registered format.
+    /// A target that pins DefaultApiStyle opts out and gets exactly that style.
+    /// </summary>
+    public IReadOnlyList<EOpenCodeApiStyle> GetStyleCandidates(OpenCodeTargetItem target, OpenCodeModel model)
+    {
+        if (target.DefaultApiStyle.IsNotEmpty())
         {
-            return TargetCatalogDefaults.CreateFreeModels();
+            return [ParseApiStyle(target.DefaultApiStyle)];
         }
 
-        return [];
+        var candidates = new List<EOpenCodeApiStyle> { EffectiveStyle(target.Id, model) };
+        foreach (var style in Adapters.AdapterFactory.SupportedStyles())
+        {
+            if (style != candidates[0])
+            {
+                candidates.Add(style);
+            }
+        }
+
+        return candidates;
+    }
+
+    /// <summary>
+    /// Persist the format a model proved to answer on so later requests go
+    /// straight to it (and the UI column reflects reality).
+    /// </summary>
+    public void RecordNegotiatedStyle(string targetId, string modelId, EOpenCodeApiStyle style)
+    {
+        lock (_lock)
+        {
+            var key = NegotiationKey(targetId, modelId);
+            if (_cache.NegotiatedStyles.TryGetValue(key, out var existing) && existing == style)
+            {
+                return;
+            }
+
+            _cache.NegotiatedStyles[key] = style;
+            try
+            {
+                SaveCache();
+            }
+            catch (Exception ex)
+            {
+                Logging.SaveLog(Tag, ex);
+            }
+        }
+    }
+
+    internal EOpenCodeApiStyle EffectiveStyle(string targetId, OpenCodeModel model)
+    {
+        lock (_lock)
+        {
+            return _cache.NegotiatedStyles.TryGetValue(NegotiationKey(targetId, model.Id), out var negotiated)
+                ? negotiated
+                : model.ApiStyle;
+        }
+    }
+
+    private List<OpenCodeModel> ApplyNegotiatedStyles(string targetId, List<OpenCodeModel> models)
+    {
+        if (_cache.NegotiatedStyles.Count == 0)
+        {
+            return models;
+        }
+
+        List<OpenCodeModel>? updated = null;
+        for (var i = 0; i < models.Count; i++)
+        {
+            var model = models[i];
+            var effective = EffectiveStyle(targetId, model);
+            if (effective == model.ApiStyle)
+            {
+                continue;
+            }
+
+            updated ??= [.. models];
+            updated[i] = model with { ApiStyle = effective };
+        }
+
+        return updated ?? models;
+    }
+
+    private static string NegotiationKey(string targetId, string modelId)
+    {
+        return $"{targetId}/{modelId}";
     }
 
     public OpenCodeModel? Resolve(string? modelRef, string defaultTarget)
@@ -113,37 +197,19 @@ public sealed class ModelCatalog
                 return false;
             }
 
-            var defaults = TargetCatalogDefaults.CreateFreeModels();
-            var merged = new List<OpenCodeModel>(remoteIds.Count);
+            var models = new List<OpenCodeModel>(remoteIds.Count);
             foreach (var id in remoteIds)
             {
-                var existing = defaults.FirstOrDefault(d => d.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
-                if (existing is not null)
-                {
-                    merged.Add(existing);
-                }
-                else
-                {
-                    var isFree = id.EndsWith("-free", StringComparison.OrdinalIgnoreCase);
-                    merged.Add(new OpenCodeModel(
-                        id, id,
-                        ParseApiStyle(target.DefaultApiStyle),
-                        null, true, true, true, false, "remote", isFree));
-                }
-            }
-
-            // Keep known default models that the remote list omitted so keyless fallback stays usable.
-            foreach (var d in defaults)
-            {
-                if (merged.All(m => !m.Id.Equals(d.Id, StringComparison.OrdinalIgnoreCase)))
-                {
-                    merged.Add(d);
-                }
+                var isFree = id.EndsWith("-free", StringComparison.OrdinalIgnoreCase);
+                models.Add(new OpenCodeModel(
+                    id, id,
+                    ParseApiStyle(target.DefaultApiStyle),
+                    null, true, true, true, false, "remote", isFree));
             }
 
             lock (_lock)
             {
-                _cache.ModelsByTarget[target.Id] = merged;
+                _cache.ModelsByTarget[target.Id] = models;
                 _cache.UpdatedAt = DateTime.UtcNow;
             }
 
@@ -260,6 +326,12 @@ public sealed class ModelCatalog
             var cache = JsonUtils.Deserialize<OpenCodeCatalogCache>(content);
             if (cache is not null)
             {
+                // Remove any legacy "default" source entries; remote is the single source of truth.
+                foreach (var kvp in cache.ModelsByTarget)
+                {
+                    kvp.Value.RemoveAll(m => m.Source.Equals("default", StringComparison.OrdinalIgnoreCase));
+                }
+
                 lock (_lock)
                 {
                     _cache = cache;

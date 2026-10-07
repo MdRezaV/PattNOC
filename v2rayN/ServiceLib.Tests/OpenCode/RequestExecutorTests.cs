@@ -65,11 +65,29 @@ public class RequestExecutorTests
     private static RequestExecutor CreateExecutor(
         StubProxyProvider provider,
         HttpMessageHandler handler,
-        string? cachePath = null)
+        string? cachePath = null,
+        OpenCodeTelemetry? telemetry = null)
     {
-        var catalog = new ModelCatalog(provider, cachePath ?? Path.Combine(Path.GetTempPath(), $"oc_{Guid.NewGuid():N}.json"));
-        return new RequestExecutor(provider, catalog, new OpenCodeTelemetry(), () => handler);
+        var actualCachePath = cachePath ?? Path.Combine(Path.GetTempPath(), $"oc_{Guid.NewGuid():N}.json");
+        var cache = new OpenCodeCatalogCache
+        {
+            UpdatedAt = DateTime.UtcNow,
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("big-pickle", "Big Pickle", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote", IsFree: true),
+                ],
+            },
+        };
+        File.WriteAllText(actualCachePath, JsonUtils.Serialize(cache, true));
+        var catalog = new ModelCatalog(provider, actualCachePath);
+        return new RequestExecutor(provider, catalog, telemetry ?? new OpenCodeTelemetry(), () => handler);
     }
+
+    private static string FreeTierErrorBody() =>
+        """{"error":{"message":"FreeTierError: stale session","type":"forbidden"}}""";
 
     private static HttpResponseMessage Json(HttpStatusCode status, string body) => new(status)
     {
@@ -245,8 +263,10 @@ public class RequestExecutorTests
     }
 
     [Test]
-    public async Task Execute_Provider5xx_RetriesOnce()
+    public async Task Execute_Provider5xx_ProbesBothStyles_RetriesLastOnce()
     {
+        // A 5xx looks like "wrong request format": the preferred style is probed
+        // once, then the alternate format gets 1 + MaxRetry attempts.
         var handler = new StubHttpHandler(_ => Json(HttpStatusCode.BadGateway, "upstream boom"));
         var provider = new StubProxyProvider { Snapshot = Snapshot() };
         var executor = CreateExecutor(provider, handler);
@@ -255,19 +275,23 @@ public class RequestExecutorTests
 
         await result.Success.Should().BeFalse();
         await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.ProviderError);
-        await handler.CallCount.Should().BeEqualTo(2);
+        // Preferred style failed → its failure is reported, not the alternate's.
+        await result.Route!.Adapter.Style.Should().BeEqualTo(EOpenCodeApiStyle.ChatCompletions);
+        await handler.CallCount.Should().BeEqualTo(3);
     }
 
     [Test]
-    public async Task Execute_MaxRetryZero_SingleAttemptOnly()
+    public async Task Execute_MaxRetryZero_OneAttemptPerFormat()
     {
+        // MaxRetry=0 means no retries — but each registered format still gets its
+        // single probe, since a 5xx may simply be the wrong endpoint for the model.
         var handler = new StubHttpHandler(_ => Json(HttpStatusCode.BadGateway, "boom"));
         var provider = new StubProxyProvider { Snapshot = Snapshot() };
         var executor = CreateExecutor(provider, handler);
 
         var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 0));
 
-        await handler.CallCount.Should().BeEqualTo(1);
+        await handler.CallCount.Should().BeEqualTo(2);
         await result.Success.Should().BeFalse();
     }
 
@@ -276,7 +300,21 @@ public class RequestExecutorTests
     {
         var handler = new StubHttpHandler(_ => Json(HttpStatusCode.OK, ChatOkBody()));
         var provider = new StubProxyProvider { Snapshot = Snapshot() };
-        var catalog = new ModelCatalog(provider, Path.Combine(Path.GetTempPath(), $"oc_{Guid.NewGuid():N}.json"));
+        var cachePath = Path.Combine(Path.GetTempPath(), $"oc_{Guid.NewGuid():N}.json");
+        var cache = new OpenCodeCatalogCache
+        {
+            UpdatedAt = DateTime.UtcNow,
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("big-pickle", "Big Pickle", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote", IsFree: true),
+                ],
+            },
+        };
+        File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+        var catalog = new ModelCatalog(provider, cachePath);
         var executor = new RequestExecutor(provider, catalog, new OpenCodeTelemetry(), () => handler);
 
         var settings = Settings();
@@ -289,6 +327,7 @@ public class RequestExecutorTests
         await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.AuthenticationFailed);
         await result.HttpStatus.Should().BeEqualTo(401);
         await handler.CallCount.Should().BeEqualTo(0);
+        try { File.Delete(cachePath); } catch { }
     }
 
     [Test]
@@ -353,5 +392,132 @@ public class RequestExecutorTests
         await result.Success.Should().BeTrue();
         await result.Route!.Target.Id.Should().BeEqualTo("opencode-free");
         await result.Route.Model.Id.Should().BeEqualTo("big-pickle");
+    }
+
+    [Test]
+    public async Task Execute_ForbiddenWithoutFreeTier_DoesNotRetry()
+    {
+        var handler = new StubHttpHandler(_ => Json(HttpStatusCode.Forbidden, """{"error":"not allowed"}"""));
+        var provider = new StubProxyProvider { Snapshot = Snapshot() };
+        var executor = CreateExecutor(provider, handler);
+
+        var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 3));
+
+        await result.Success.Should().BeFalse();
+        await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.AuthorizationFailed);
+        await result.HttpStatus.Should().BeEqualTo(403);
+        await handler.CallCount.Should().BeEqualTo(1);
+    }
+
+    [Test]
+    public async Task Execute_FreeTier403TestPath_DoesNotRetry_ReportsAuthorizationFailed()
+    {
+        var handler = new StubHttpHandler(_ => Json(HttpStatusCode.Forbidden,
+            """{"error":{"message":"FreeTierError: can only be used from within OpenCode","type":"forbidden"}}"""));
+        var provider = new StubProxyProvider { Snapshot = Snapshot() };
+        var executor = CreateExecutor(provider, handler);
+
+        var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 3), allowSessionRefresh: false);
+
+        await result.Success.Should().BeFalse();
+        await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.AuthorizationFailed);
+        await result.HttpStatus.Should().BeEqualTo(403);
+        await handler.CallCount.Should().BeEqualTo(1);
+    }
+
+    [Test]
+    public async Task Execute_FreeTier403LivePath_RefreshesSessionOnceThenSucceeds()
+    {
+        var calls = 0;
+        var handler = new StubHttpHandler(_ =>
+        {
+            calls++;
+            return calls == 1
+                ? Json(HttpStatusCode.Forbidden,
+                    """{"error":{"message":"FreeTierError: stale session","type":"forbidden"}}""")
+                : Json(HttpStatusCode.OK, ChatOkBody());
+        });
+        var provider = new StubProxyProvider { Snapshot = Snapshot() };
+        var executor = CreateExecutor(provider, handler);
+
+        // MaxRetry=0 proves the session refresh is independent of the retry budget.
+        var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 0));
+
+        await result.Success.Should().BeTrue();
+        await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.OpenCodeAccepted);
+        await handler.CallCount.Should().BeEqualTo(2);
+    }
+
+    [Test]
+    public async Task Execute_Timeout_RetriesLikeAnyOtherTransientFailure()
+    {
+        // A timeout used to return before DecideNext ran, so MaxRetry was
+        // silently ignored for the most common failure while HTTP 408 still
+        // retried. Both must follow the same budget now.
+        var handler = new StubHttpHandler(_ => throw new TaskCanceledException("request timed out"));
+        var provider = new StubProxyProvider { Snapshot = Snapshot() };
+        var executor = CreateExecutor(provider, handler);
+
+        var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 1));
+
+        await result.Success.Should().BeFalse();
+        await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.Timeout);
+        await result.HttpStatus.Should().BeEqualTo(504);
+        await handler.CallCount.Should().BeEqualTo(2);
+    }
+
+    [Test]
+    public async Task Execute_TimeoutWithNoRetries_StopsAfterOneAttempt()
+    {
+        var handler = new StubHttpHandler(_ => throw new TaskCanceledException("request timed out"));
+        var provider = new StubProxyProvider { Snapshot = Snapshot() };
+        var executor = CreateExecutor(provider, handler);
+
+        var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 0));
+
+        await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.Timeout);
+        await handler.CallCount.Should().BeEqualTo(1);
+    }
+
+    [Test]
+    public async Task Execute_RetryAndSessionRefresh_AreEachCountedExactlyOnce()
+    {
+        // The session refresh rewinds `attempt`, which used to make the loop
+        // header count the refreshed request as a second retry.
+        var calls = 0;
+        var handler = new StubHttpHandler(_ =>
+        {
+            calls++;
+            return calls switch
+            {
+                1 => throw new HttpRequestException("connection refused"),
+                _ => Json(HttpStatusCode.Forbidden, FreeTierErrorBody()),
+            };
+        });
+        var provider = new StubProxyProvider { Snapshot = Snapshot() };
+        var telemetry = new OpenCodeTelemetry();
+        var executor = CreateExecutor(provider, handler, telemetry: telemetry);
+
+        var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 3));
+
+        // One network retry, one free-tier session refresh, then a stop.
+        await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.AuthorizationFailed);
+        await handler.CallCount.Should().BeEqualTo(3);
+        await telemetry.GetSnapshot().Retries.Should().BeEqualTo(2);
+    }
+
+    [Test]
+    public async Task Execute_FreeTier403LivePath_PersistentFailure_RetriesOnceOnly()
+    {
+        var handler = new StubHttpHandler(_ => Json(HttpStatusCode.Forbidden,
+            """{"error":{"message":"FreeTierError: stale session","type":"forbidden"}}"""));
+        var provider = new StubProxyProvider { Snapshot = Snapshot() };
+        var executor = CreateExecutor(provider, handler);
+
+        var result = await executor.ExecuteAsync(Request(), Settings(maxRetry: 3));
+
+        await result.Success.Should().BeFalse();
+        await result.State.Should().BeEqualTo(EOpenCodeConnectivityState.AuthorizationFailed);
+        await handler.CallCount.Should().BeEqualTo(2);
     }
 }

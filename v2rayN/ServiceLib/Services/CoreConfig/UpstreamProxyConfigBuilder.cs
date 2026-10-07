@@ -5,7 +5,7 @@ namespace ServiceLib.Services.CoreConfig;
 /// <summary>
 /// Builds the app-upstream outbound for Xray/sing-box generated configs and
 /// applies dialerProxy/detour on non-private proxy outbounds.
-/// PattN global first-hop proxy — unrelated to FullConfigTemplateItem.ProxyDetour.
+/// PattNOC global first-hop proxy — unrelated to FullConfigTemplateItem.ProxyDetour.
 /// </summary>
 internal static class UpstreamProxyConfigBuilder
 {

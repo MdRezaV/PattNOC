@@ -94,8 +94,7 @@
                             x:Name="chkFreeOnly"
                             Margin="{StaticResource MarginLr8}"
                             DockPanel.Dock="Left"
-                            Content="{x:Static resx:ResUI.OpenCodeFreeOnly}"
-                            IsChecked="{Binding FilterFreeOnly, Mode=TwoWay}" />
+                            Content="{x:Static resx:ResUI.OpenCodeFreeOnly}" />
                         <ComboBox
                             x:Name="cboApiStyleFilter"
                             Width="140"
@@ -125,57 +124,121 @@
                         Margin="{StaticResource Margin4}"
                         Text="{Binding ModelCountDisplay}" />
 
-                    <DataGrid
-                        x:Name="grdModels"
-                        AutoGenerateColumns="False"
-                        BorderThickness="1"
-                        CanUserReorderColumns="True"
-                        CanUserResizeColumns="True"
-                        GridLinesVisibility="All"
-                        HeadersVisibility="All"
-                        IsReadOnly="True"
-                        ItemsSource="{Binding ModelRows}"
-                        SelectedItem="{Binding SelectedModelRow, Mode=TwoWay}"
-                        SelectionMode="Single">
-                        <DataGrid.Columns>
-                            <DataGridTemplateColumn Width="60" SortMemberPath="IsFree">
-                                <DataGridTemplateColumn.CellTemplate>
+                    <DockPanel>
+                        <StackPanel
+                            Width="230"
+                            Margin="{StaticResource Margin4},0,0,0"
+                            DockPanel.Dock="Right"
+                            Spacing="4">
+                            <TextBlock
+                                FontWeight="Bold"
+                                Text="{x:Static resx:ResUI.OpenCodePriorityList}"
+                                TextWrapping="Wrap" />
+                            <ListBox
+                                x:Name="lstPriority"
+                                HorizontalAlignment="Stretch"
+                                ItemsSource="{Binding PriorityRows}"
+                                SelectedItem="{Binding SelectedPriorityRow, Mode=TwoWay}">
+                                <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <Label
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            Content="{x:Static resx:ResUI.OpenCodeFreeBadge}"
-                                            IsVisible="{Binding IsFree}"
-                                            Theme="{DynamicResource TagLabel}" />
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock
+                                                Width="24"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding Priority}" />
+                                            <TextBlock
+                                                VerticalAlignment="Center"
+                                                Text="{Binding DisplayName}"
+                                                TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
                                     </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn
-                                Width="150"
-                                Binding="{Binding Id}"
-                                Header="{x:Static resx:ResUI.OpenCodeColumnId}" />
-                            <DataGridTextColumn
-                                Width="*"
-                                Binding="{Binding DisplayName}"
-                                Header="{x:Static resx:ResUI.OpenCodeColumnDisplayName}" />
-                            <DataGridTextColumn
-                                Width="120"
-                                Binding="{Binding ApiStyle}"
-                                Header="{x:Static resx:ResUI.OpenCodeColumnApiStyle}" />
-                            <DataGridTextColumn
-                                Width="80"
-                                Binding="{Binding Source}"
-                                Header="{x:Static resx:ResUI.OpenCodeColumnSource}" />
-                            <DataGridCheckBoxColumn
-                                Width="60"
-                                Binding="{Binding SupportsTools}"
-                                Header="{x:Static resx:ResUI.OpenCodeColumnTools}" />
-                            <DataGridCheckBoxColumn
-                                Width="70"
-                                Binding="{Binding SupportsStreaming}"
-                                Header="{x:Static resx:ResUI.OpenCodeColumnStreaming}" />
-                        </DataGrid.Columns>
-                    </DataGrid>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <StackPanel
+                                HorizontalAlignment="Right"
+                                Orientation="Horizontal"
+                                Spacing="4">
+                                <Button
+                                    x:Name="btnPriorityUp"
+                                    Content="↑"
+                                    ToolTip.Tip="{x:Static resx:ResUI.OpenCodePriorityMoveUp}" />
+                                <Button
+                                    x:Name="btnPriorityDown"
+                                    Content="↓"
+                                    ToolTip.Tip="{x:Static resx:ResUI.OpenCodePriorityMoveDown}" />
+                                <Button
+                                    x:Name="btnPriorityRemove"
+                                    Content="✕"
+                                    ToolTip.Tip="{x:Static resx:ResUI.OpenCodePriorityRemove}" />
+                            </StackPanel>
+                            <TextBlock
+                                IsVisible="{Binding !HasPriorityRows}"
+                                Text="{x:Static resx:ResUI.OpenCodePriorityEmpty}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <DataGrid
+                            x:Name="grdModels"
+                            AutoGenerateColumns="False"
+                            BorderThickness="1"
+                            CanUserReorderColumns="True"
+                            CanUserResizeColumns="True"
+                            GridLinesVisibility="All"
+                            HeadersVisibility="All"
+                            IsReadOnly="True"
+                            ItemsSource="{Binding ModelRows}"
+                            SelectedItem="{Binding SelectedModelRow, Mode=TwoWay}"
+                            SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Width="50" Header="{x:Static resx:ResUI.OpenCodeColumnTest}">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Width="60" SortMemberPath="IsFree">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Label
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Content="{x:Static resx:ResUI.OpenCodeFreeBadge}"
+                                                IsVisible="{Binding IsFree}"
+                                                Theme="{DynamicResource TagLabel}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn
+                                    Width="150"
+                                    Binding="{Binding Id}"
+                                    Header="{x:Static resx:ResUI.OpenCodeColumnId}" />
+                                <DataGridTextColumn
+                                    Width="*"
+                                    Binding="{Binding DisplayName}"
+                                    Header="{x:Static resx:ResUI.OpenCodeColumnDisplayName}" />
+                                <DataGridTextColumn
+                                    Width="120"
+                                    Binding="{Binding ApiStyle}"
+                                    Header="{x:Static resx:ResUI.OpenCodeColumnApiStyle}" />
+                                <DataGridTextColumn
+                                    Width="80"
+                                    Binding="{Binding Source}"
+                                    Header="{x:Static resx:ResUI.OpenCodeColumnSource}" />
+                                <DataGridCheckBoxColumn
+                                    Width="60"
+                                    Binding="{Binding SupportsTools}"
+                                    Header="{x:Static resx:ResUI.OpenCodeColumnTools}" />
+                                <DataGridCheckBoxColumn
+                                    Width="70"
+                                    Binding="{Binding SupportsStreaming}"
+                                    Header="{x:Static resx:ResUI.OpenCodeColumnStreaming}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
                 </DockPanel>
             </TabItem>
             <TabItem Header="{x:Static resx:ResUI.OpenCodeTabSettings}">

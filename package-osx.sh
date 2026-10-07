@@ -9,7 +9,7 @@ wget -nv -O $FileName "https://github.com/2dust/v2rayN-core-bin/raw/refs/heads/m
 7z x $FileName
 cp -rf v2rayN-${Arch}/* $OutputPath
 
-# PattN: bundle patterniha/Xray-core instead of the upstream core shipped in v2rayN-core-bin
+# PattNOC: bundle patterniha/Xray-core instead of the upstream core shipped in v2rayN-core-bin
 case "$Arch" in
   macos-64)    XrayAsset="Xray-macos-64.zip" ;;
   macos-arm64) XrayAsset="Xray-macos-arm64-v8a.zip" ;;
@@ -20,7 +20,7 @@ mkdir -p "$OutputPath/bin/xray"
 cp -f xray-core/xray "$OutputPath/bin/xray/xray"
 chmod +x "$OutputPath/bin/xray/xray"
 
-# PattN: bundle Chocolate4U geo files
+# PattNOC: bundle Chocolate4U geo files
 wget -nv -O "$OutputPath/bin/geosite.dat" "https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/geosite.dat"
 wget -nv -O "$OutputPath/bin/geoip.dat" "https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/geoip.dat"
 mkdir -p "$OutputPath/bin/srss"
@@ -28,13 +28,13 @@ wget -nv -O "$OutputPath/bin/srss/geosite-category-ir.srs" "https://raw.githubus
 wget -nv -O "$OutputPath/bin/srss/geoip-ir.srs" "https://raw.githubusercontent.com/chocolate4u/Iran-sing-box-rules/rule-set/geoip-ir.srs"
 
 PackagePath="v2rayN-Package-${Arch}"
-mkdir -p "$PackagePath/PattN.app/Contents/Resources"
-cp -rf "$OutputPath" "$PackagePath/PattN.app/Contents/MacOS"
-cp -f "$PackagePath/PattN.app/Contents/MacOS/v2rayN.icns" "$PackagePath/PattN.app/Contents/Resources/AppIcon.icns"
-echo "When this file exists, app will not store configs under this folder" > "$PackagePath/PattN.app/Contents/MacOS/NotStoreConfigHere.txt"
-chmod +x "$PackagePath/PattN.app/Contents/MacOS/PattN"
+mkdir -p "$PackagePath/PattNOC.app/Contents/Resources"
+cp -rf "$OutputPath" "$PackagePath/PattNOC.app/Contents/MacOS"
+cp -f "$PackagePath/PattNOC.app/Contents/MacOS/v2rayN.icns" "$PackagePath/PattNOC.app/Contents/Resources/AppIcon.icns"
+echo "When this file exists, app will not store configs under this folder" > "$PackagePath/PattNOC.app/Contents/MacOS/NotStoreConfigHere.txt"
+chmod +x "$PackagePath/PattNOC.app/Contents/MacOS/PattNOC"
 
-cat >"$PackagePath/PattN.app/Contents/Info.plist" <<-EOF
+cat >"$PackagePath/PattNOC.app/Contents/Info.plist" <<-EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -52,17 +52,17 @@ cat >"$PackagePath/PattN.app/Contents/Info.plist" <<-EOF
     <string>hu</string>
   </array>
   <key>CFBundleDisplayName</key>
-  <string>PattN</string>
+  <string>PattNOC</string>
   <key>CFBundleExecutable</key>
-  <string>PattN</string>
+  <string>PattNOC</string>
   <key>CFBundleIconFile</key>
   <string>AppIcon</string>
   <key>CFBundleIconName</key>
   <string>AppIcon</string>
   <key>CFBundleIdentifier</key>
-  <string>patterniha.PattN</string>
+  <string>MdRezaV.PattNOC</string>
   <key>CFBundleName</key>
-  <string>PattN</string>
+  <string>PattNOC</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
@@ -78,11 +78,11 @@ cat >"$PackagePath/PattN.app/Contents/Info.plist" <<-EOF
 EOF
 
 create-dmg \
-    --volname "PattN Installer" \
+    --volname "PattNOC Installer" \
     --window-size 700 420 \
     --icon-size 100 \
-    --icon "PattN.app" 160 185 \
-    --hide-extension "PattN.app" \
+    --icon "PattNOC.app" 160 185 \
+    --hide-extension "PattNOC.app" \
     --app-drop-link 500 185 \
-    "PattN-${Arch}.dmg" \
-    "$PackagePath/PattN.app"
+    "PattNOC-${Arch}.dmg" \
+    "$PackagePath/PattNOC.app"

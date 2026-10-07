@@ -59,7 +59,7 @@ public partial class CoreConfigV2rayService
                     .ToList()
                     .ForEach(outbound =>
                     {
-                        // PattN: a targetStrategy chosen on the profile wins over this global default
+                        // PattNOC: a targetStrategy chosen on the profile wins over this global default
                         if (outbound.targetStrategy.IsNullOrEmpty())
                         {
                             outbound.targetStrategy = strategy4Proxy;
@@ -277,7 +277,7 @@ public partial class CoreConfigV2rayService
             }
             if (fakeIPMatchDomain.Count > 0)
             {
-                // PattN: no "fakedns" block, so Xray-core applies its default fake IP pools
+                // PattNOC: no "fakedns" block, so Xray-core applies its default fake IP pools
                 AddDnsServers(["fakedns"], fakeIPMatchDomain, skipFallback: false);
             }
         }

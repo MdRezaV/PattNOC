@@ -47,13 +47,13 @@ jobs:
       uses: actions/download-artifact@v8
       with:
         name: ${{ matrix.arch }}
-        path: PattN-${{ env.Target }}-${{ env.Arch }}
+        path: PattNOC-${{ env.Target }}-${{ env.Arch }}
 
     - name: Get v2rayN-core-bin
       run: |
         wget -nv -O core-bin.zip "https://github.com/2dust/v2rayN-core-bin/raw/refs/heads/master/v2rayN-$Target-$Arch.zip"
         7z x -y core-bin.zip
-        cp -an v2rayN-$Target-$Arch/. PattN-$Target-$Arch/
+        cp -an v2rayN-$Target-$Arch/. PattNOC-$Target-$Arch/
 
     - name: Bundle patterniha/Xray-core
       run: |
@@ -69,31 +69,31 @@ jobs:
         esac
         wget -nv -O xray-core.zip "https://github.com/patterniha/Xray-core/releases/latest/download/$asset"
         7z x -y -oxray-core xray-core.zip
-        mkdir -p PattN-$Target-$Arch/bin/xray
-        cp -f xray-core/xray* PattN-$Target-$Arch/bin/xray/
-        chmod +x PattN-$Target-$Arch/bin/xray/xray 2>/dev/null || true
+        mkdir -p PattNOC-$Target-$Arch/bin/xray
+        cp -f xray-core/xray* PattNOC-$Target-$Arch/bin/xray/
+        chmod +x PattNOC-$Target-$Arch/bin/xray/xray 2>/dev/null || true
 
     - name: Bundle Chocolate4U geo files
       run: |
         set -euo pipefail
-        wget -nv -O "PattN-$Target-$Arch/bin/geosite.dat" "https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/geosite.dat"
-        wget -nv -O "PattN-$Target-$Arch/bin/geoip.dat" "https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/geoip.dat"
-        mkdir -p "PattN-$Target-$Arch/bin/srss"
-        wget -nv -O "PattN-$Target-$Arch/bin/srss/geosite-category-ir.srs" "https://raw.githubusercontent.com/chocolate4u/Iran-sing-box-rules/rule-set/geosite-category-ir.srs"
-        wget -nv -O "PattN-$Target-$Arch/bin/srss/geoip-ir.srs" "https://raw.githubusercontent.com/chocolate4u/Iran-sing-box-rules/rule-set/geoip-ir.srs"
+        wget -nv -O "PattNOC-$Target-$Arch/bin/geosite.dat" "https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/geosite.dat"
+        wget -nv -O "PattNOC-$Target-$Arch/bin/geoip.dat" "https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/geoip.dat"
+        mkdir -p "PattNOC-$Target-$Arch/bin/srss"
+        wget -nv -O "PattNOC-$Target-$Arch/bin/srss/geosite-category-ir.srs" "https://raw.githubusercontent.com/chocolate4u/Iran-sing-box-rules/rule-set/geosite-category-ir.srs"
+        wget -nv -O "PattNOC-$Target-$Arch/bin/srss/geoip-ir.srs" "https://raw.githubusercontent.com/chocolate4u/Iran-sing-box-rules/rule-set/geoip-ir.srs"
 
     - name: Package zip archive
-      run: 7z a -tZip PattN-$Target-$Arch.zip PattN-$Target-$Arch -mx1
+      run: 7z a -tZip PattNOC-$Target-$Arch.zip PattNOC-$Target-$Arch -mx1
 
     - name: Rename windows-desktop
       if: inputs.target == 'windows-desktop'
-      run: mv "PattN-$Target-$Arch.zip" "PattN-$Target-$Arch-desktop.zip"
+      run: mv "PattNOC-$Target-$Arch.zip" "PattNOC-$Target-$Arch-desktop.zip"
 
     - name: Upload zip artifact
       uses: actions/upload-artifact@v7
       with:
         name: release-${{ inputs.target }}-${{ matrix.arch }}
-        path: PattN*.zip
+        path: PattNOC*.zip
         if-no-files-found: error
 
   release:

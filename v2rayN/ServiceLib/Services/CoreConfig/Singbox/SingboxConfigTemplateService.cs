@@ -144,7 +144,7 @@ public partial class CoreConfigSingboxService
     }
 
     /// <summary>
-    /// PattN global first-hop proxy: injects the app-upstream outbound and detours
+    /// PattNOC global first-hop proxy: injects the app-upstream outbound and detours
     /// non-private proxy outbounds through it. Runs LAST, after ProxyDetour and ECH,
     /// so existing detour values are preserved.
     /// </summary>

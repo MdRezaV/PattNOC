@@ -116,7 +116,7 @@ public static class ConfigHandler
         config.ConstItem ??= new ConstItem();
         if (isNewConfig)
         {
-            // PattN: fresh installs default to the Iran regional preset sources (Chocolate4U)
+            // PattNOC: fresh installs default to the Iran regional preset sources (Chocolate4U)
             config.ConstItem.GeoSourceUrl = Global.GeoFilesSources[2];
             config.ConstItem.SrsSourceUrl = Global.SingboxRulesetSources[2];
             config.ConstItem.RouteRulesTemplateSourceUrl = Global.RoutingRulesSources[2];
@@ -124,7 +124,7 @@ public static class ConfigHandler
 
         config.SimpleDNSItem ??= InitBuiltinSimpleDNS();
         config.SimpleDNSItem.BlockAAAAQuery ??= false;
-        // PattN: FakeIP is on by default
+        // PattNOC: FakeIP is on by default
         config.SimpleDNSItem.FakeIP ??= true;
         config.SimpleDNSItem.GlobalFakeIp ??= true;
         config.SimpleDNSItem.BootstrapDNS ??= Global.DomainPureIPDNSAddress.FirstOrDefault();
@@ -150,6 +150,7 @@ public static class ConfigHandler
             config.SpeedTestItem.MixedConcurrencyCount = Global.SpeedTestConcurrencyCountDefault;
         }
         config.SpeedTestItem.MixedConcurrencyCount = Math.Clamp(config.SpeedTestItem.MixedConcurrencyCount, Global.SpeedTestConcurrencyCountMin, Global.SpeedTestConcurrencyCountMax);
+        NormalizeTestExecutionOptions(config.SpeedTestItem);
         if (config.SpeedTestItem.UdpTestTarget.IsNullOrEmpty())
         {
             config.SpeedTestItem.UdpTestTarget = Global.UdpTestTargets.First();
@@ -211,6 +212,48 @@ public static class ConfigHandler
         }
 
         return config;
+    }
+
+    /// <summary>
+    /// Seeds and clamps per-test execution options (Real Delay, Multi), migrating
+    /// from legacy MixedConcurrencyCount/SpeedTestTimeout on first load.
+    /// </summary>
+    public static void NormalizeTestExecutionOptions(SpeedTestItem item)
+    {
+        if (item.RealDelayTimeoutSeconds <= 0)
+        {
+            item.RealDelayTimeoutSeconds = Global.RealDelayTimeoutSecondsDefault;
+        }
+        if (item.RealDelayConcurrentCount <= 0)
+        {
+            item.RealDelayConcurrentCount = item.MixedConcurrencyCount > 0
+                ? item.MixedConcurrencyCount
+                : Global.SpeedTestConcurrencyCountDefault;
+        }
+        if (item.MultiDelayTimeoutSeconds <= 0)
+        {
+            item.MultiDelayTimeoutSeconds = Global.RealDelayTimeoutSecondsDefault;
+        }
+        if (item.MultiSpeedTimeoutSeconds <= 0)
+        {
+            item.MultiSpeedTimeoutSeconds = item.SpeedTestTimeout >= Global.TestTimeoutSecondsMin
+                ? item.SpeedTestTimeout
+                : Global.TestTimeoutSecondsDefault;
+        }
+        if (item.MultiConcurrentCount <= 0)
+        {
+            item.MultiConcurrentCount = item.MixedConcurrencyCount > 0
+                ? item.MixedConcurrencyCount
+                : Global.SpeedTestConcurrencyCountDefault;
+        }
+
+        item.RealDelayTimeoutSeconds = Math.Clamp(item.RealDelayTimeoutSeconds, Global.TestTimeoutSecondsMin, Global.TestTimeoutSecondsMax);
+        item.MultiDelayTimeoutSeconds = Math.Clamp(item.MultiDelayTimeoutSeconds, Global.TestTimeoutSecondsMin, Global.TestTimeoutSecondsMax);
+        item.MultiSpeedTimeoutSeconds = Math.Clamp(item.MultiSpeedTimeoutSeconds, Global.TestTimeoutSecondsMin, Global.TestTimeoutSecondsMax);
+        item.RealDelayConcurrentCount = Math.Clamp(item.RealDelayConcurrentCount, Global.SpeedTestConcurrencyCountMin, Global.SpeedTestConcurrencyCountMax);
+        item.MultiConcurrentCount = Math.Clamp(item.MultiConcurrentCount, Global.SpeedTestConcurrencyCountMin, Global.SpeedTestConcurrencyCountMax);
+        item.RealDelayRetryCount = Math.Clamp(item.RealDelayRetryCount, Global.TestRetryCountMin, Global.TestRetryCountMax);
+        item.MultiRetryCount = Math.Clamp(item.MultiRetryCount, Global.TestRetryCountMin, Global.TestRetryCountMax);
     }
 
     /// <summary>
@@ -1214,6 +1257,79 @@ public static class ConfigHandler
         await RemoveServers(config, lstRemove);
 
         return new Tuple<int, int>(lstProfile.Count, lstKeep.Count);
+    }
+
+    /// <summary>
+    /// Remove servers with duplicate outbound IP addresses
+    /// Servers with unknown IP are ignored
+    /// </summary>
+    /// <param name="config">Current configuration</param>
+    /// <param name="subId">Subscription ID to deduplicate</param>
+    /// <returns>Tuple with total count and remaining count after deduplication</returns>
+    public static async Task<Tuple<int, int>> DedupServerListByIp(Config config, string subId)
+    {
+        var lstProfile = await AppManager.Instance.ProfileItems(subId);
+        if (lstProfile == null)
+        {
+            return new Tuple<int, int>(0, 0);
+        }
+
+        var dicIpInfo = (await ProfileExManager.Instance.GetProfileExs())
+            .ToDictionary(t => t.IndexId, t => t.IpInfo);
+
+        List<ProfileItem> lstKeep = [];
+        List<ProfileItem> lstRemove = [];
+        HashSet<string> seenIps = new(StringComparer.OrdinalIgnoreCase);
+        if (!config.GuiItem.KeepOlderDedupl)
+        {
+            lstProfile.Reverse();
+        }
+
+        foreach (var item in lstProfile)
+        {
+            if (item.IsComplex())
+            {
+                lstKeep.Add(item);
+                continue;
+            }
+
+            string? ip = null;
+            if (item.IndexId is not null && dicIpInfo.TryGetValue(item.IndexId, out var ipInfo))
+            {
+                ip = ExtractDedupIp(ipInfo);
+            }
+
+            if (ip == null || seenIps.Add(ip))
+            {
+                lstKeep.Add(item);
+            }
+            else
+            {
+                lstRemove.Add(item);
+            }
+        }
+        await RemoveServers(config, lstRemove);
+
+        return new Tuple<int, int>(lstProfile.Count, lstKeep.Count);
+    }
+
+    /// <summary>
+    /// Extract a comparable IP address from stored IpInfo text
+    /// Returns null when the IP is unknown (untested, none, skip test, unresolved)
+    /// </summary>
+    private static string? ExtractDedupIp(string? ipInfo)
+    {
+        if (ipInfo.IsNullOrEmpty())
+        {
+            return null;
+        }
+
+        var token = ipInfo.Trim().Split(' ').LastOrDefault();
+        if (System.Net.IPAddress.TryParse(token, out _))
+        {
+            return token;
+        }
+        return null;
     }
 
     /// <summary>
@@ -2647,7 +2763,7 @@ public static class ConfigHandler
             item.Sort = ++maxSort;
             item.Url = string.Empty;
 
-            //PattN: the Iran template still ships what PattN removed from its Iran direct rule-set; clean it before storing
+            //PattNOC: the Iran template still ships what PattNOC removed from its Iran direct rule-set; clean it before storing
             if (item.Remarks == IranDirectRoutingRemarks)
             {
                 item.RuleSet = ruleSetsString;
@@ -2668,7 +2784,7 @@ public static class ConfigHandler
     }
 
     /// <summary>
-    /// PattN: rewrite the Iran direct-domain rule from "geosite:ir" (Chocolate4U only) to
+    /// PattNOC: rewrite the Iran direct-domain rule from "geosite:ir" (Chocolate4U only) to
     /// "domain:ir" + "geosite:category-ir" (present in every geosite source), as custom_routing_white_iran has now
     /// </summary>
     /// <param name="rules">Rules of the stored Iran routing</param>
@@ -2702,7 +2818,7 @@ public static class ConfigHandler
     }
 
     /// <summary>
-    /// PattN: remove the "port 0-65535 -> proxy" rule that custom_routing_white_iran used to end with. It matched every
+    /// PattNOC: remove the "port 0-65535 -> proxy" rule that custom_routing_white_iran used to end with. It matched every
     /// connection by its port before an IPIfNonMatch domain strategy could resolve the domain, so the Iran IP rule never
     /// applied to domains. What no rule matches still goes to the proxy without it: the first outbound, or the final
     /// balancer rule. A rule that was edited since is left alone.
@@ -2723,12 +2839,12 @@ public static class ConfigHandler
     }
 
     /// <summary>
-    /// PattN: name of the Iran direct rule-set, which the Iran template (Chocolate4U) imports under the same name
+    /// PattNOC: name of the Iran direct rule-set, which the Iran template (Chocolate4U) imports under the same name
     /// </summary>
     public const string IranDirectRoutingRemarks = "IR-ایران مستقیم، بقیه پراکسی";
 
     /// <summary>
-    /// PattN: clean an Iran direct rule-set of what custom_routing_white_iran no longer has and the Iran template
+    /// PattNOC: clean an Iran direct rule-set of what custom_routing_white_iran no longer has and the Iran template
     /// (Chocolate4U) still ships:
     /// the IPOnDemand domain strategy, which 7.24.8-P5 stored too, so that the default (AsIs) applies;
     /// the "8.8.8.8 -> direct" rule for domestic DNS, which the direct-dns routing rule covers now;
@@ -2762,8 +2878,8 @@ public static class ConfigHandler
     }
 
     /// <summary>
-    /// PattN: clean every Iran direct rule-set of items (see CleanIranDirectRouting), not only the first one: "Import Rules"
-    /// adds the one of the Iran template under the same name next to PattN's own
+    /// PattNOC: clean every Iran direct rule-set of items (see CleanIranDirectRouting), not only the first one: "Import Rules"
+    /// adds the one of the Iran template under the same name next to PattNOC's own
     /// </summary>
     /// <param name="items">Stored routing rule-sets</param>
     /// <returns>The rule-sets that changed, to be saved</returns>
@@ -2800,7 +2916,7 @@ public static class ConfigHandler
             items = await AppManager.Instance.RoutingItems();
         }
 
-        //PattN TODO Temporary code to be removed later: clean every Iran direct rule-set that an older release stored,
+        //PattNOC TODO Temporary code to be removed later: clean every Iran direct rule-set that an older release stored,
         //or that "Import Rules" took from the Iran template before it was cleaned on import (see CleanIranDirectRouting)
         foreach (var iranDirectItem in CleanIranDirectRoutings(items ?? []))
         {
@@ -2852,7 +2968,7 @@ public static class ConfigHandler
         };
         await AddBatchRoutingRules(item1, EmbedUtils.GetEmbedText(Global.CustomRoutingFileName + "global"));
 
-        //PattN: Iran direct (Chocolate4U), see https://github.com/Chocolate4U/Iran-v2ray-rules
+        //PattNOC: Iran direct (Chocolate4U), see https://github.com/Chocolate4U/Iran-v2ray-rules
         var item4 = new RoutingItem()
         {
             Remarks = IranDirectRoutingRemarks,
@@ -2861,7 +2977,7 @@ public static class ConfigHandler
         };
         await AddBatchRoutingRules(item4, EmbedUtils.GetEmbedText(Global.CustomRoutingFileName + "white_iran"));
 
-        //PattN: Iran global proxy
+        //PattNOC: Iran global proxy
         var item5 = new RoutingItem()
         {
             Remarks = "IR-پراکسی سراسری",
@@ -3020,7 +3136,7 @@ public static class ConfigHandler
         {
             UseSystemHosts = false,
             AddCommonHosts = true,
-            // PattN: FakeIP is on by default
+            // PattNOC: FakeIP is on by default
             FakeIP = true,
             GlobalFakeIp = true,
             BlockBindingQuery = true,
@@ -3110,7 +3226,7 @@ public static class ConfigHandler
     /// <returns>True if successful</returns>
     public static async Task<bool> ApplyRegionalPreset(Config config, EPresetType type)
     {
-        //PattN: a preset leaves the DNS settings as they are. Default and China used to reset them to the built-in ones,
+        //PattNOC: a preset leaves the DNS settings as they are. Default and China used to reset them to the built-in ones,
         //and Russia and Iran to replace them with the region's DNS templates, or, when the simple DNS template could not
         //be downloaded, to enable custom DNS in both the Xray and the sing-box settings
         switch (type)

@@ -58,21 +58,24 @@ public static class ConnectionHandler
     /// <summary>
     /// Measures response time by sending HTTP requests through proxy.
     /// </summary>
-    public static async Task<int> GetRealPingTime(IWebProxy? webProxy, CancellationToken cancellationToken = default)
+    public static async Task<int> GetRealPingTime(IWebProxy? webProxy, CancellationToken cancellationToken = default, int timeoutSeconds = 0)
     {
         var url = AppManager.Instance.Config.SpeedTestItem.SpeedPingTestUrl;
         var responseTime = -1;
+        var timeout = timeoutSeconds > 0
+            ? TimeSpan.FromSeconds(timeoutSeconds)
+            : Global.LocalFetch;
         try
         {
             using var timeoutCts = new CancellationTokenSource();
-            timeoutCts.CancelAfter(Global.LocalFetch);
+            timeoutCts.CancelAfter(timeout);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
             var linkedToken = linkedCts.Token;
             using var client = new HttpClient(new SocketsHttpHandler()
             {
                 Proxy = webProxy,
                 UseProxy = webProxy != null,
-                ConnectTimeout = Global.LocalFetch,
+                ConnectTimeout = timeout,
             });
 
             List<int> oneTime = [];

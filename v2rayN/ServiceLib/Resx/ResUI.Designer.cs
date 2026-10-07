@@ -1580,6 +1580,15 @@ namespace ServiceLib.Resx {
                 return ResourceManager.GetString("menuRemoveDuplicateServer", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   查找类似 Remove duplicate IP 的本地化字符串。
+        /// </summary>
+        public static string menuRemoveDuplicateIp {
+            get {
+                return ResourceManager.GetString("menuRemoveDuplicateIp", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   查找类似 Remove invalid by test results 的本地化字符串。
@@ -4654,6 +4663,69 @@ namespace ServiceLib.Resx {
         }
         
         /// <summary>
+        ///   查找类似 Real Delay Test Timeout (seconds) 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsRealDelayTestTimeout {
+            get {
+                return ResourceManager.GetString("TbSettingsRealDelayTestTimeout", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Real Delay Test Concurrent Count 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsRealDelayTestConcurrent {
+            get {
+                return ResourceManager.GetString("TbSettingsRealDelayTestConcurrent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Real Delay Test Retry Count 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsRealDelayTestRetry {
+            get {
+                return ResourceManager.GetString("TbSettingsRealDelayTestRetry", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Multi Test Delay Timeout (seconds) 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsMultiTestDelayTimeout {
+            get {
+                return ResourceManager.GetString("TbSettingsMultiTestDelayTimeout", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Multi Test Speed Timeout (seconds) 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsMultiTestSpeedTimeout {
+            get {
+                return ResourceManager.GetString("TbSettingsMultiTestSpeedTimeout", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Multi Test Concurrent Count 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsMultiTestConcurrent {
+            get {
+                return ResourceManager.GetString("TbSettingsMultiTestConcurrent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Multi Test Retry Count 的本地化字符串。
+        /// </summary>
+        public static string TbSettingsMultiTestRetry {
+            get {
+                return ResourceManager.GetString("TbSettingsMultiTestRetry", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Xray Mux setting 的本地化字符串。
         /// </summary>
         public static string TbSettingsMux4Ray {
@@ -6153,6 +6225,60 @@ namespace ServiceLib.Resx {
         public static string OpenCodeColumnStreaming {
             get {
                 return ResourceManager.GetString("OpenCodeColumnStreaming", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Test 的本地化字符串。
+        /// </summary>
+        public static string OpenCodeColumnTest {
+            get {
+                return ResourceManager.GetString("OpenCodeColumnTest", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Test priority (top = first) 的本地化字符串。
+        /// </summary>
+        public static string OpenCodePriorityList {
+            get {
+                return ResourceManager.GetString("OpenCodePriorityList", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 No models selected. Tick models in the list to build the test order. 的本地化字符串。
+        /// </summary>
+        public static string OpenCodePriorityEmpty {
+            get {
+                return ResourceManager.GetString("OpenCodePriorityEmpty", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Move up 的本地化字符串。
+        /// </summary>
+        public static string OpenCodePriorityMoveUp {
+            get {
+                return ResourceManager.GetString("OpenCodePriorityMoveUp", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Move down 的本地化字符串。
+        /// </summary>
+        public static string OpenCodePriorityMoveDown {
+            get {
+                return ResourceManager.GetString("OpenCodePriorityMoveDown", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Remove 的本地化字符串。
+        /// </summary>
+        public static string OpenCodePriorityRemove {
+            get {
+                return ResourceManager.GetString("OpenCodePriorityRemove", resourceCulture);
             }
         }
 

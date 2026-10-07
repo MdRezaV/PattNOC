@@ -4,7 +4,7 @@ public class BaseFmt
 {
     private static string UrlEncodeSafe(string? value) => Utils.UrlEncode(value ?? string.Empty);
 
-    // PattN: JSON options such as echOutbound travel in share links on one line and are stored
+    // PattNOC: JSON options such as echOutbound travel in share links on one line and are stored
     // indented, as fm is; text that is not JSON is kept as it is
     private static readonly JsonSerializerOptions ShareJsonOptions = new()
     {

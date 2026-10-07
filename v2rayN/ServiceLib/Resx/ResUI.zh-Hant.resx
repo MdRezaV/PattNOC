@@ -727,7 +727,7 @@
     <value>開啟 Mux 多路復用</value>
   </data>
   <data name="TbSettingsN" xml:space="preserve">
-    <value>PattN 設定</value>
+    <value>PattNOC 設定</value>
   </data>
   <data name="TbSettingsPass" xml:space="preserve">
     <value>認證密碼</value>
@@ -1398,6 +1398,27 @@
   <data name="TbSettingsMixedConcurrencyCount" xml:space="preserve">
     <value>多執行緒測試時的並發數量</value>
   </data>
+  <data name="TbSettingsRealDelayTestTimeout" xml:space="preserve">
+    <value>Real Delay Test Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsRealDelayTestConcurrent" xml:space="preserve">
+    <value>Real Delay Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsRealDelayTestRetry" xml:space="preserve">
+    <value>Real Delay Test Retry Count</value>
+  </data>
+  <data name="TbSettingsMultiTestDelayTimeout" xml:space="preserve">
+    <value>Multi Test Delay Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestSpeedTimeout" xml:space="preserve">
+    <value>Multi Test Speed Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestConcurrent" xml:space="preserve">
+    <value>Multi Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsMultiTestRetry" xml:space="preserve">
+    <value>Multi Test Retry Count</value>
+  </data>
   <data name="TbSettingsExceptionTip2" xml:space="preserve">
     <value>例外：對於下列位址不使用代理，使用逗號 (,) 分隔。</value>
   </data>
@@ -1792,7 +1813,7 @@
     <value>PreSharedKey</value>
   </data>
   <data name="menuExport2InnerUri" xml:space="preserve">
-    <value>匯出 PattN 內部分享連結至剪貼簿（多選）</value>
+    <value>匯出 PattNOC 內部分享連結至剪貼簿（多選）</value>
   </data>
   <data name="MsgCheckUpdateHasNewVersion" xml:space="preserve">
     <value>{0} 有新版本可用：{1}</value>
@@ -1865,7 +1886,7 @@
     <value>根憑證提供者</value>
   </data>
   <data name="TbRootCertificateProviderTip" xml:space="preserve">
-    <value>僅適用於 PattN GUI 的下載與網路請求，不影響核心的憑證驗證</value>
+    <value>僅適用於 PattNOC GUI 的下載與網路請求，不影響核心的憑證驗證</value>
   </data>
   <data name="TbProxyDialResolveStrategy" xml:space="preserve">
     <value>連線代理解析策略</value>

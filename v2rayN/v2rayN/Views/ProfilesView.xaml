@@ -153,6 +153,10 @@
                             Height="{StaticResource MenuItemHeight}"
                             Header="{x:Static resx:ResUI.menuRemoveDuplicateServer}" />
                         <MenuItem
+                            x:Name="menuRemoveDuplicateIp"
+                            Height="{StaticResource MenuItemHeight}"
+                            Header="{x:Static resx:ResUI.menuRemoveDuplicateIp}" />
+                        <MenuItem
                             x:Name="menuRemoveInvalidServerResult"
                             Height="{StaticResource MenuItemHeight}"
                             Header="{x:Static resx:ResUI.menuRemoveInvalidServerResult}" />

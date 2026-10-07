@@ -128,7 +128,7 @@ public partial class CoreConfigSingboxService
                 type = "fakeip",
                 inet4_range = Global.SingboxFakeIPv4Range,
             };
-            // PattN: no IPv6 range when AAAA queries are blocked, like Xray-core's pools under UseIPv4, or when
+            // PattNOC: no IPv6 range when AAAA queries are blocked, like Xray-core's pools under UseIPv4, or when
             // the tun has no IPv6 address, as sing-box then routes no IPv6 into it and fake IPv6 would be unreachable
             if (simpleDnsItem.BlockAAAAQuery != true
                 && (!context.IsTunEnabled || _config.TunModeItem.EnableIPv6Address))

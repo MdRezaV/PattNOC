@@ -2,7 +2,7 @@ namespace ServiceLib;
 
 public class Global
 {
-    public const string AppName = "PattN";
+    public const string AppName = "PattNOC";
     public const string GithubUrl = "https://github.com";
     public const string GithubApiUrl = "https://api.github.com/repos";
     public const string GeoUrl = "https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/{0}.dat";
@@ -87,7 +87,7 @@ public class Global
     public const int MinFontSize = 8;
     public const int MinFontSizeCount = 13;
     public const string RebootAs = "rebootas";
-    public const string AvaAssets = "avares://PattN/Assets/";
+    public const string AvaAssets = "avares://PattNOC/Assets/";
     public const string LocalAppData = "V2RAYN_LOCAL_APPLICATION_DATA_V2";
     public const string V2RayLocalAsset = "V2RAY_LOCATION_ASSET";
     public const string XrayLocalAsset = "XRAY_LOCATION_ASSET";
@@ -96,6 +96,16 @@ public class Global
     public const int SpeedTestConcurrencyCountMin = 1;
     public const int SpeedTestConcurrencyCountMax = 30;
     public const int SpeedTestConcurrencyCountDefault = 10;
+    public const int TestTimeoutSecondsMin = 5;
+    public const int TestTimeoutSecondsMax = 300;
+    public const int TestTimeoutSecondsDefault = 10;
+    public const int TestRetryCountMin = 0;
+    public const int TestRetryCountMax = 3;
+    public const int TestRetryCountDefault = 1;
+    public const int RealDelayTimeoutSecondsDefault = 5;
+    public const int OpenCodeMaxConcurrentMin = 1;
+    public const int OpenCodeMaxConcurrentMax = 30;
+    public const int OpenCodeMaxConcurrentDefault = 8;
     public const string LinuxBash = "/bin/bash";
     public const string StringTrue = "true";
     public const string StringFalse = "false";
@@ -115,7 +125,7 @@ public class Global
     public const string SingboxLocalDNSTag = "local-local";
     public const string SingboxHostsDNSTag = "hosts-dns";
     public const string SingboxFakeDNSTag = "fake-dns";
-    // PattN: sing-box's fake IP ranges are XTLS/Xray-core's default fake DNS pools (features/dns/fakedns.go)
+    // PattNOC: sing-box's fake IP ranges are XTLS/Xray-core's default fake DNS pools (features/dns/fakedns.go)
     public const string SingboxFakeIPv4Range = "198.18.0.0/15";
     public const string SingboxFakeIPv6Range = "2001:2::/48";
     public const string SingboxSrsDownloadHttpClientTag = "srs-download-http-client";
@@ -477,7 +487,7 @@ public class Global
         ""
     ];
 
-    // PattN: values of the Xray outbound targetStrategy; the first one is Xray's default
+    // PattNOC: values of the Xray outbound targetStrategy; the first one is Xray's default
     public static readonly List<string> TargetStrategies =
     [
         AsIs,
@@ -697,7 +707,7 @@ public class Global
         { ECoreType.overtls, "ShadowsocksR-Live/overtls" },
         { ECoreType.shadowquic, "spongebob888/shadowquic" },
         { ECoreType.mieru, "enfein/mieru" },
-        { ECoreType.v2rayN, "patterniha/PattN" },
+        { ECoreType.v2rayN, "MdRezaV/PattNOC" },
     };
 
     public static readonly List<string> OtherGeoUrls =

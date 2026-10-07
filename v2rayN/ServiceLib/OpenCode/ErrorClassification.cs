@@ -85,6 +85,16 @@ public static class ErrorClassification
                 new OpenCodeError("server_error", "Network error reaching the upstream endpoint.", null, null, "network_error"));
         }
 
+        // A parseable transport with an unusable payload: the endpoint answered but
+        // not with a completion this adapter understands (in-band error, bad JSON,
+        // wrong response shape). Treat as a provider-side failure so a different
+        // request format can still be tried for this model.
+        if (exception is OpenCodeStreamException or JsonException)
+        {
+            return (EOpenCodeConnectivityState.ProviderError,
+                new OpenCodeError("server_error", Truncate(exception.Message, 300) ?? "Unreadable upstream response.", null, null, "invalid_upstream_response"));
+        }
+
         if (httpStatus is null && exception is null)
         {
             return (EOpenCodeConnectivityState.Unknown,
@@ -103,6 +113,25 @@ public static class ErrorClassification
             {
                 ["message"] = error.Message,
                 ["type"] = error.Type.IsNullOrEmpty() ? "server_error" : error.Type,
+                ["param"] = error.Param,
+                ["code"] = error.Code,
+            },
+        };
+
+        return JsonSerializer.Serialize(payload, _errorJsonOptions);
+    }
+
+    public static string ToAnthropicErrorJson(OpenCodeError error)
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["type"] = "error",
+            ["error"] = new Dictionary<string, object?>
+            {
+                ["type"] = error.Type.IsNullOrEmpty() || error.Type == "server_error"
+                    ? "api_error"
+                    : error.Type,
+                ["message"] = error.Message,
                 ["param"] = error.Param,
                 ["code"] = error.Code,
             },

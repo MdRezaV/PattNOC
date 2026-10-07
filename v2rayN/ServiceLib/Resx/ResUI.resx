@@ -483,6 +483,9 @@
   <data name="menuRemoveDuplicateServer" xml:space="preserve">
     <value>Remove duplicate</value>
   </data>
+  <data name="menuRemoveDuplicateIp" xml:space="preserve">
+    <value>Remove duplicate IP</value>
+  </data>
   <data name="menuRemoveServer" xml:space="preserve">
     <value>Remove selected</value>
   </data>
@@ -727,7 +730,7 @@
     <value>Turn on Mux Multiplexing</value>
   </data>
   <data name="TbSettingsN" xml:space="preserve">
-    <value>PattN settings</value>
+    <value>PattNOC settings</value>
   </data>
   <data name="TbSettingsPass" xml:space="preserve">
     <value>Auth pass</value>
@@ -1401,6 +1404,27 @@
   <data name="TbSettingsMixedConcurrencyCount" xml:space="preserve">
     <value>The number of concurrent tests during multi-test</value>
   </data>
+  <data name="TbSettingsRealDelayTestTimeout" xml:space="preserve">
+    <value>Real Delay Test Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsRealDelayTestConcurrent" xml:space="preserve">
+    <value>Real Delay Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsRealDelayTestRetry" xml:space="preserve">
+    <value>Real Delay Test Retry Count</value>
+  </data>
+  <data name="TbSettingsMultiTestDelayTimeout" xml:space="preserve">
+    <value>Multi Test Delay Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestSpeedTimeout" xml:space="preserve">
+    <value>Multi Test Speed Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestConcurrent" xml:space="preserve">
+    <value>Multi Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsMultiTestRetry" xml:space="preserve">
+    <value>Multi Test Retry Count</value>
+  </data>
   <data name="TbSettingsExceptionTip2" xml:space="preserve">
     <value>Exclusions: Do not use proxy server for the following addresses. Use comma (,) to separate entries.</value>
   </data>
@@ -1798,7 +1822,7 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
     <value>PreSharedKey</value>
   </data>
   <data name="menuExport2InnerUri" xml:space="preserve">
-    <value>Export PattN Internal Share Link to Clipboard</value>
+    <value>Export PattNOC Internal Share Link to Clipboard</value>
   </data>
   <data name="MsgCheckUpdateHasNewVersion" xml:space="preserve">
     <value>{0} has a new version available: {1}</value>
@@ -1864,7 +1888,7 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
     <value>Root Certificate Provider</value>
   </data>
   <data name="TbRootCertificateProviderTip" xml:space="preserve">
-    <value>Only applies to the PattN GUI's downloads and network requests. Does not affect the core's certificate validation.</value>
+    <value>Only applies to the PattNOC GUI's downloads and network requests. Does not affect the core's certificate validation.</value>
   </data>
   <data name="TbProxyDialResolveStrategy" xml:space="preserve">
     <value>Proxy Dial Resolution Strategy</value>
@@ -2121,6 +2145,24 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
   <data name="OpenCodeColumnStreaming" xml:space="preserve">
     <value>Stream</value>
   </data>
+  <data name="OpenCodeColumnTest" xml:space="preserve">
+    <value>Test</value>
+  </data>
+  <data name="OpenCodePriorityList" xml:space="preserve">
+    <value>Test priority (top = first)</value>
+  </data>
+  <data name="OpenCodePriorityEmpty" xml:space="preserve">
+    <value>No models selected. Tick models in the list to build the test order.</value>
+  </data>
+  <data name="OpenCodePriorityMoveUp" xml:space="preserve">
+    <value>Move up</value>
+  </data>
+  <data name="OpenCodePriorityMoveDown" xml:space="preserve">
+    <value>Move down</value>
+  </data>
+  <data name="OpenCodePriorityRemove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
   <data name="OpenCodeModelCount" xml:space="preserve">
     <value>Showing {0} of {1} models</value>
   </data>
@@ -2128,7 +2170,7 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
     <value>Models refreshed.</value>
   </data>
   <data name="OpenCodeRefreshFailed" xml:space="preserve">
-    <value>Model refresh failed. Built-in defaults remain available.</value>
+    <value>Model refresh failed. Check your connection and try again.</value>
   </data>
   <data name="OpenCodeSaved" xml:space="preserve">
     <value>OpenCode settings saved.</value>

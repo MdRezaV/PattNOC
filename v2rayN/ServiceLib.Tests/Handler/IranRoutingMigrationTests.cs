@@ -127,14 +127,14 @@ public class IranRoutingMigrationTests
         RuleSet = IranTemplateRules,
     };
 
-    private static List<RulesItem> PattNIranRules() =>
+    private static List<RulesItem> PattNOCIranRules() =>
         JsonUtils.Deserialize<List<RulesItem>>(EmbedUtils.GetEmbedText(Global.CustomRoutingFileName + "white_iran")) ?? [];
 
     private static string Describe(IEnumerable<RulesItem> rules) => string.Join("\n", rules.Select(t =>
         $"{t.OutboundTag}|{t.Port}|{t.Network}|{string.Join(",", t.Domain ?? [])}|{string.Join(",", t.Ip ?? [])}|{string.Join(",", t.Protocol ?? [])}|{t.Remarks}"));
 
     [Test]
-    public async Task CleanIranDirectRouting_ShouldTurnTheIranTemplateIntoPattNRules()
+    public async Task CleanIranDirectRouting_ShouldTurnTheIranTemplateIntoPattNOCRules()
     {
         var item = IranTemplateRuleSet();
 
@@ -142,20 +142,20 @@ public class IranRoutingMigrationTests
 
         await changed.Should().BeTrue();
         await item.DomainStrategy.Should().BeEqualTo(string.Empty);
-        await item.RuleNum.Should().BeEqualTo(PattNIranRules().Count);
-        await Describe(JsonUtils.Deserialize<List<RulesItem>>(item.RuleSet) ?? []).Should().BeEqualTo(Describe(PattNIranRules()));
+        await item.RuleNum.Should().BeEqualTo(PattNOCIranRules().Count);
+        await Describe(JsonUtils.Deserialize<List<RulesItem>>(item.RuleSet) ?? []).Should().BeEqualTo(Describe(PattNOCIranRules()));
         await ConfigHandler.CleanIranDirectRouting(item).Should().BeFalse();
     }
 
     [Test]
     public async Task CleanIranDirectRoutings_ShouldCleanEveryIranDirectRuleSetOnly()
     {
-        // PattN's own rule-set, the Iran template's copy that "Import Rules" adds after it under the same name, and the
+        // PattNOC's own rule-set, the Iran template's copy that "Import Rules" adds after it under the same name, and the
         // Iran global rule-set, whose own catch-all stays
         var pattn = new RoutingItem
         {
             Remarks = ConfigHandler.IranDirectRoutingRemarks,
-            RuleSet = JsonUtils.Serialize(PattNIranRules(), false),
+            RuleSet = JsonUtils.Serialize(PattNOCIranRules(), false),
         };
         var imported = IranTemplateRuleSet();
         var global = new RoutingItem
@@ -169,7 +169,7 @@ public class IranRoutingMigrationTests
 
         await changed.Count.Should().BeEqualTo(1);
         await ReferenceEquals(changed[0], imported).Should().BeTrue();
-        await Describe(JsonUtils.Deserialize<List<RulesItem>>(imported.RuleSet) ?? []).Should().BeEqualTo(Describe(PattNIranRules()));
+        await Describe(JsonUtils.Deserialize<List<RulesItem>>(imported.RuleSet) ?? []).Should().BeEqualTo(Describe(PattNOCIranRules()));
         await global.DomainStrategy.Should().BeEqualTo(Global.IPOnDemand);
         await global.RuleSet.Should().BeEqualTo(IranTemplateRules);
     }

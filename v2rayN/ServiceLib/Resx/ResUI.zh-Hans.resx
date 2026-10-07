@@ -727,7 +727,7 @@
     <value>开启 Mux 多路复用</value>
   </data>
   <data name="TbSettingsN" xml:space="preserve">
-    <value>PattN 设置</value>
+    <value>PattNOC 设置</value>
   </data>
   <data name="TbSettingsPass" xml:space="preserve">
     <value>认证密码</value>
@@ -1389,6 +1389,27 @@
   <data name="TbSettingsMixedConcurrencyCount" xml:space="preserve">
     <value>多线程测试时的并发数量</value>
   </data>
+  <data name="TbSettingsRealDelayTestTimeout" xml:space="preserve">
+    <value>Real Delay Test Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsRealDelayTestConcurrent" xml:space="preserve">
+    <value>Real Delay Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsRealDelayTestRetry" xml:space="preserve">
+    <value>Real Delay Test Retry Count</value>
+  </data>
+  <data name="TbSettingsMultiTestDelayTimeout" xml:space="preserve">
+    <value>Multi Test Delay Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestSpeedTimeout" xml:space="preserve">
+    <value>Multi Test Speed Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestConcurrent" xml:space="preserve">
+    <value>Multi Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsMultiTestRetry" xml:space="preserve">
+    <value>Multi Test Retry Count</value>
+  </data>
   <data name="TbSettingsExceptionTip2" xml:space="preserve">
     <value>例外：对于下列地址不使用代理配置。使用逗号 (,) 分隔。</value>
   </data>
@@ -1783,7 +1804,7 @@
     <value>PreSharedKey</value>
   </data>
   <data name="menuExport2InnerUri" xml:space="preserve">
-    <value>导出 PattN 内部分享链接至剪贴板 (多选)</value>
+    <value>导出 PattNOC 内部分享链接至剪贴板 (多选)</value>
   </data>
   <data name="MsgCheckUpdateHasNewVersion" xml:space="preserve">
     <value>{0} 有新版本可用：{1}</value>
@@ -1856,7 +1877,7 @@
     <value>根证书提供者</value>
   </data>
   <data name="TbRootCertificateProviderTip" xml:space="preserve">
-    <value>仅用于 PattN 界面程序的下载及网络请求，不影响核心的证书验证。</value>
+    <value>仅用于 PattNOC 界面程序的下载及网络请求，不影响核心的证书验证。</value>
   </data>
   <data name="TbProxyDialResolveStrategy" xml:space="preserve">
     <value>连接代理解析策略</value>

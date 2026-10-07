@@ -59,7 +59,7 @@ public class HyRealmTests
     [Test]
     public async Task GetShareUriAndResolveConfig_Hy2Realm_ShouldRoundTripFinalmask()
     {
-        // PattN: realm links carry fm too, as the other Hysteria2 links do.
+        // PattNOC: realm links carry fm too, as the other Hysteria2 links do.
         const string finalmask = """{"udp":[{"type":"salamander","settings":{"password":"fm-pass"}}]}""";
         var str = $"hysteria2+realm://mytoken@rendezvous.example.com/my-cabin-1f3a8c2e9b?auth=your_password&fm={Utils.UrlEncode(finalmask)}#remark";
 

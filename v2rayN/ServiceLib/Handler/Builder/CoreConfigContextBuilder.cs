@@ -397,7 +397,7 @@ public class CoreConfigContextBuilder
             }
         }
 
-        // PattN: Xray sends the ECH config query to the DNS server after the "+" (the whole value when there
+        // PattNOC: Xray sends the ECH config query to the DNS server after the "+" (the whole value when there
         // is none) and resolves that server's domain itself; in TUN mode it would otherwise resolve through
         // the proxy, whose handshake waits for this query. sing-box never uses that server: it queries the
         // name protected above through its own DNS.
@@ -429,7 +429,7 @@ public class CoreConfigContextBuilder
             context.ProtectDomainList.Add(dAddr);
         }
 
-        // PattN: the servers of the ECH outbound, which the ECH config query is sent through
+        // PattNOC: the servers of the ECH outbound, which the ECH config query is sent through
         if (NodeValidator.ValidateEchOutbound(node, out var echOutbound) == null && echOutbound != null)
         {
             foreach (var echServer in GetOutboundServerAddresses(echOutbound).Where(Utils.IsDomain))
@@ -442,7 +442,7 @@ public class CoreConfigContextBuilder
     }
 
     /// <summary>
-    ///     PattN: the servers an outbound written as JSON connects to: the address of each vnext and
+    ///     PattNOC: the servers an outbound written as JSON connects to: the address of each vnext and
     ///     servers entry, the address of the flat settings that newer configs use, and the host of each
     ///     WireGuard peer endpoint.
     /// </summary>

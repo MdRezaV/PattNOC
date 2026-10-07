@@ -8,7 +8,17 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
+    // Boxed JsonElement null survives WhenWritingNull so assistant tool-call messages
+    // serialize with explicit "content": null as the OpenAI spec shows.
+    private static readonly JsonElement JsonNull = JsonSerializer.SerializeToElement<object?>(null);
+
     public EOpenCodeApiStyle Style => EOpenCodeApiStyle.ChatCompletions;
+
+    // Quartet rename map produced by the last free-tier BuildRequest: sent name
+    // → the caller's spelling. Mirrors 9Router's request-local map (WeakMap on
+    // the body): applied on the way out, consumed on the way back so the agent
+    // still recognises its own tool calls.
+    private IReadOnlyDictionary<string, string>? _renamedTools;
 
     public HttpRequestMessage BuildRequest(
         NormalizedCompletionRequest req,
@@ -17,9 +27,13 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
         string requestId)
     {
         var body = BuildBody(req);
-        if (OpenCodeFreeTier.IsFreeTierTarget(target))
+        // Body shaping is a free-tier (unauthenticated) behavior only. A keyed
+        // target must keep the caller's real tools, tool_choice, and sampling
+        // fields or agents like Claude Code can never invoke their own tools.
+        _renamedTools = null;
+        if (apiKey.IsNullOrEmpty() && OpenCodeFreeTier.IsFreeTierTarget(target))
         {
-            OpenCodeFreeTier.ApplyBodyShape(body, Style);
+            _renamedTools = OpenCodeFreeTier.ApplyBodyShape(body, Style);
         }
 
         var url = OpenCodeUrl.Combine(target.BaseUrl, "/chat/completions");
@@ -32,6 +46,19 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
     }
 
     public async IAsyncEnumerable<NormalizedStreamEvent> TranslateStreamAsync(
+        HttpResponseMessage response,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        var renames = _renamedTools;
+        await foreach (var evt in TranslateStreamCoreAsync(response, ct))
+        {
+            yield return evt.ToolName is null
+                ? evt
+                : evt with { ToolName = OpenCodeFingerprintTools.Restore(renames, evt.ToolName) };
+        }
+    }
+
+    private async IAsyncEnumerable<NormalizedStreamEvent> TranslateStreamCoreAsync(
         HttpResponseMessage response,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
@@ -59,8 +86,34 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
                 yield break;
             }
 
-            using var doc = JsonDocument.Parse(payload);
+            JsonDocument doc;
+            try
+            {
+                doc = JsonDocument.Parse(payload);
+            }
+            catch (JsonException)
+            {
+                // A garbled frame must not tear down an otherwise healthy stream.
+                continue;
+            }
+
+            using (doc)
+            {
             var root = doc.RootElement;
+
+            // In-band error frame (HTTP 200 but the stream reports failure).
+            if (root.TryGetProperty("error", out var errEl) && errEl.ValueKind == JsonValueKind.Object)
+            {
+                var errMsg = errEl.TryGetProperty("message", out var em) && em.ValueKind == JsonValueKind.String
+                    ? em.GetString() ?? "Upstream error."
+                    : "Upstream error.";
+                var errType = errEl.TryGetProperty("code", out var ec) && ec.ValueKind == JsonValueKind.String
+                    ? ec.GetString() ?? "server_error"
+                    : "server_error";
+                yield return new NormalizedStreamEvent(
+                    NormalizedStreamEventType.Error, ErrorType: errType, ErrorMessage: errMsg);
+                yield break;
+            }
 
             if (root.TryGetProperty("choices", out var choices) && choices.ValueKind == JsonValueKind.Array
                 && choices.GetArrayLength() > 0)
@@ -128,6 +181,7 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
                         NormalizedStreamEventType.Usage, PromptTokens: pt, CompletionTokens: ctok);
                 }
             }
+            }
         }
     }
 
@@ -135,6 +189,11 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
         HttpResponseMessage response,
         CancellationToken ct)
     {
+        if (StreamAggregator.IsEventStream(response))
+        {
+            return await StreamAggregator.AggregateAsync(TranslateStreamAsync(response, ct), ct);
+        }
+
         var body = await response.Content.ReadAsStringAsync(ct);
         using var doc = JsonDocument.Parse(body);
         var root = doc.RootElement;
@@ -214,6 +273,7 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
             }
         }
 
+        OpenCodeFingerprintTools.RestoreResponseToolNames(_renamedTools, result);
         return result;
     }
 
@@ -245,6 +305,11 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
             body["max_tokens"] = req.MaxTokens;
         }
 
+        if (req.Stop is { Count: > 0 })
+        {
+            body["stop"] = req.Stop;
+        }
+
         if (req.User.IsNotEmpty())
         {
             body["user"] = req.User;
@@ -255,9 +320,10 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
             body["tools"] = req.Tools.Select(ToolToWire).ToList();
         }
 
-        if (req.ToolChoice.IsNotEmpty())
+        var toolChoice = ToolChoiceToWire(req.ToolChoice);
+        if (toolChoice is not null)
         {
-            body["tool_choice"] = req.ToolChoice;
+            body["tool_choice"] = toolChoice;
         }
 
         if (req.ResponseFormatType.IsNotEmpty() && !req.ResponseFormatType.Equals("text", StringComparison.OrdinalIgnoreCase))
@@ -275,6 +341,31 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
         return body;
     }
 
+    /// <summary>
+    /// OpenAI Chat Completions tool_choice: auto/none/required stay strings;
+    /// a named tool must be {"type":"function","function":{"name":"..."}}.
+    /// </summary>
+    internal static object? ToolChoiceToWire(string? toolChoice)
+    {
+        if (toolChoice.IsNullOrEmpty())
+        {
+            return null;
+        }
+
+        if (toolChoice.Equals("auto", StringComparison.OrdinalIgnoreCase)
+            || toolChoice.Equals("none", StringComparison.OrdinalIgnoreCase)
+            || toolChoice.Equals("required", StringComparison.OrdinalIgnoreCase))
+        {
+            return toolChoice;
+        }
+
+        return new Dictionary<string, object?>
+        {
+            ["type"] = "function",
+            ["function"] = new Dictionary<string, object?> { ["name"] = toolChoice },
+        };
+    }
+
     private static Dictionary<string, object?> MessageToWire(NormalizedMessage m)
     {
         var wire = new Dictionary<string, object?>
@@ -282,14 +373,22 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
             ["role"] = m.Role,
         };
 
-        if (m.Content is not null)
+        var isTool = m.Role.Equals("tool", StringComparison.OrdinalIgnoreCase);
+        var hasToolCalls = m.ToolCalls is { Count: > 0 };
+
+        if (isTool)
+        {
+            // OpenAI requires tool_call_id and content on every tool message.
+            wire["tool_call_id"] = m.ToolCallId ?? "";
+            wire["content"] = m.Content ?? "";
+        }
+        else if (hasToolCalls && m.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase))
+        {
+            wire["content"] = m.Content is not null ? m.Content : JsonNull;
+        }
+        else if (m.Content is not null)
         {
             wire["content"] = m.Content;
-        }
-
-        if (m.ToolCallId.IsNotEmpty())
-        {
-            wire["tool_call_id"] = m.ToolCallId;
         }
 
         if (m.Name.IsNotEmpty())
@@ -297,12 +396,12 @@ public sealed class ChatCompletionsAdapter : IUpstreamAdapter
             wire["name"] = m.Name;
         }
 
-        if (m.ToolCalls is { Count: > 0 })
+        if (hasToolCalls)
         {
-            wire["tool_calls"] = m.ToolCalls.Select(tc => new Dictionary<string, object?>
+            wire["tool_calls"] = m.ToolCalls!.Select(tc => new Dictionary<string, object?>
             {
                 ["id"] = tc.Id,
-                ["type"] = tc.Type,
+                ["type"] = tc.Type.IsNullOrEmpty() ? "function" : tc.Type,
                 ["function"] = new Dictionary<string, object?>
                 {
                     ["name"] = tc.Function?.Name ?? "",

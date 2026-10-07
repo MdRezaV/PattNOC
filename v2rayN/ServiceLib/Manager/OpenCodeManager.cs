@@ -157,7 +157,7 @@ public sealed class OpenCodeManager
                     EOpenCodeConnectivityState.Unknown, "OpenCode is not initialized.");
             }
 
-            var result = await tester.TestAsync(settings, targetId, modelRef, ct);
+            var result = await tester.TestAsync(settings, targetId, modelRef, ct, isTest: true);
             await StoreTestResultAsync(targetId ?? settings.DefaultTarget, result);
             return result;
         }
@@ -172,6 +172,7 @@ public sealed class OpenCodeManager
         IWebProxy webProxy,
         string? profileIndexId = null,
         string? profileRemark = null,
+        string? modelRef = null,
         CancellationToken ct = default)
     {
         try
@@ -194,7 +195,7 @@ public sealed class OpenCodeManager
             var snapshot = new ActiveProxySnapshot(webProxy, 0, profileIndexId ?? string.Empty, profileRemark);
             var executor = new RequestExecutor(new FixedProxyProvider(snapshot), catalog, telemetry);
             var tester = new ConnectivityTester(executor);
-            return await tester.TestAsync(settings, null, null, ct);
+            return await tester.TestAsync(settings, null, modelRef, ct, isTest: true);
         }
         catch (Exception ex)
         {

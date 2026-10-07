@@ -68,10 +68,17 @@ public sealed class GatewayService
             var app = builder.Build();
             _concurrency = new SemaphoreSlim(Math.Max(1, settings.MaxConcurrentRequests));
 
-            app.MapGet("/v1/models", HandleListModels);
-            app.MapGet("/v1/models/{modelId}", HandleGetModel);
-            app.MapPost("/v1/chat/completions", HandleChatCompletions);
-            app.MapPost("/v1/responses", HandleResponses);
+            app.MapGet("/v1/models", ctx => HandleListModels(ctx, claudeAlias: false));
+            app.MapGet("/claude/v1/models", ctx => HandleListModels(ctx, claudeAlias: true));
+            app.MapGet("/v1/models/{modelId}", (HttpContext ctx, string modelId) => HandleGetModel(ctx, modelId, claudeAlias: false));
+            app.MapGet("/claude/v1/models/{modelId}", (HttpContext ctx, string modelId) => HandleGetModel(ctx, modelId, claudeAlias: true));
+            app.MapPost("/v1/chat/completions", ctx => HandleCompletion(ctx, "chat", claudeAlias: false));
+            app.MapPost("/claude/v1/chat/completions", ctx => HandleCompletion(ctx, "chat", claudeAlias: true));
+            app.MapPost("/v1/responses", ctx => HandleCompletion(ctx, "responses", claudeAlias: false));
+            app.MapPost("/claude/v1/responses", ctx => HandleCompletion(ctx, "responses", claudeAlias: true));
+            // Anthropic Messages API — what Claude Code actually calls (ANTHROPIC_BASE_URL + /v1/messages).
+            app.MapPost("/v1/messages", ctx => HandleCompletion(ctx, "anthropic", claudeAlias: false));
+            app.MapPost("/claude/v1/messages", ctx => HandleCompletion(ctx, "anthropic", claudeAlias: true));
 
             await app.StartAsync(ct);
 
@@ -84,7 +91,7 @@ public sealed class GatewayService
             }
 
             _app = app;
-            Logging.SaveLog($"{Tag} started on http://{host}:{_boundPort}/v1");
+            Logging.SaveLog($"{Tag} started on http://{host}:{_boundPort}/v1 (claude alias: /claude/v1, /claude/v1/messages)");
             return true;
         }
         catch (Exception ex)
@@ -140,44 +147,112 @@ public sealed class GatewayService
         }
     }
 
-    private async Task HandleListModels(HttpContext context)
+    private const string ClaudeModelPrefix = "claude-";
+
+    private static string ApplyClaudePrefix(string modelId) =>
+        modelId.StartsWith(ClaudeModelPrefix, StringComparison.OrdinalIgnoreCase)
+            ? modelId
+            : ClaudeModelPrefix + modelId;
+
+    private static string StripClaudePrefix(string modelRef)
+    {
+        if (modelRef.IsNullOrEmpty())
+        {
+            return modelRef;
+        }
+
+        // modelRef may be "model" or "target/model"; strip only from the model part.
+        var slash = modelRef.IndexOf('/');
+        if (slash > 0 && slash < modelRef.Length - 1)
+        {
+            var targetPart = modelRef[..(slash + 1)];
+            var modelPart = modelRef[(slash + 1)..];
+            return modelPart.StartsWith(ClaudeModelPrefix, StringComparison.OrdinalIgnoreCase)
+                ? targetPart + modelPart[ClaudeModelPrefix.Length..]
+                : modelRef;
+        }
+
+        return modelRef.StartsWith(ClaudeModelPrefix, StringComparison.OrdinalIgnoreCase)
+            ? modelRef[ClaudeModelPrefix.Length..]
+            : modelRef;
+    }
+
+    private async Task HandleListModels(HttpContext context, bool claudeAlias)
     {
         var settings = _getSettings();
         var targetId = settings.DefaultTarget;
         var models = _catalog.GetModels(targetId);
+        if (settings.FreeOnly)
+        {
+            models = models.Where(m => m.IsFree).ToList();
+        }
+
+        if (claudeAlias)
+        {
+            models = models.Select(m => m with { Id = ApplyClaudePrefix(m.Id) }).ToList();
+        }
+
         await WriteJson(context, 200, ClientFormat.WriteModels(models, targetId));
     }
 
-    private async Task HandleGetModel(HttpContext context, string modelId)
+    private async Task HandleGetModel(HttpContext context, string modelId, bool claudeAlias)
     {
         var settings = _getSettings();
-        var (target, model) = _catalog.ResolveTargetModel(modelId, settings);
-        if (model is null || target is null)
+        var lookupId = claudeAlias ? StripClaudePrefix(modelId) : modelId;
+        var (target, model) = _catalog.ResolveTargetModel(lookupId, settings);
+        if (model is null || target is null || (settings.FreeOnly && !model.IsFree))
         {
             await WriteError(context, 404, new OpenCodeError(
                 "not_found_error", $"Model '{modelId}' not found.", 404, null, "model_not_found"));
             return;
         }
 
+        if (claudeAlias)
+        {
+            model = model with { Id = ApplyClaudePrefix(model.Id) };
+        }
+
         await WriteJson(context, 200, ClientFormat.WriteModel(model, target.Id));
     }
 
-    private Task HandleChatCompletions(HttpContext context) =>
-        HandleCompletion(context, clientFormat: "chat");
-
-    private Task HandleResponses(HttpContext context) =>
-        HandleCompletion(context, clientFormat: "responses");
-
-    private async Task HandleCompletion(HttpContext context, string clientFormat)
+    private async Task HandleCompletion(HttpContext context, string clientFormat, bool claudeAlias)
     {
         var requestId = Guid.NewGuid().ToString("N")[..12];
         context.Response.Headers["x-opencode-request-id"] = requestId;
+        string? modelRef = null;
+
+        // Client-facing outcomes are logged on every terminal path so the log
+        // shows both what was asked of the gateway and what the client got.
+        async Task ClientErrorAsync(int status, OpenCodeError error, string fmt)
+        {
+            await WriteError(context, status, error, fmt);
+            OpenCodeRequestLog.Write(new OpenCodeLogEntry(
+                "client",
+                RequestId: requestId,
+                Client: clientFormat,
+                ModelId: modelRef,
+                HttpStatus: status,
+                Ok: false,
+                Detail: $"{error.Message} ({error.Code ?? "error"})"));
+        }
+
+        void ClientLog(bool? ok, int? status, string detail)
+        {
+            OpenCodeRequestLog.Write(new OpenCodeLogEntry(
+                "client",
+                RequestId: requestId,
+                Client: clientFormat,
+                ModelId: modelRef,
+                HttpStatus: status,
+                Ok: ok,
+                Detail: detail));
+        }
 
         var semaphore = _concurrency;
         if (semaphore is null || !await semaphore.WaitAsync(TimeSpan.FromSeconds(5), context.RequestAborted))
         {
-            await WriteError(context, 503, new OpenCodeError(
-                "server_error", "Gateway is overloaded. Try again shortly.", 503, null, "overloaded_error"));
+            await ClientErrorAsync(503, new OpenCodeError(
+                "server_error", "Gateway is overloaded. Try again shortly.", 503, null, "overloaded_error"), "chat");
             return;
         }
 
@@ -186,8 +261,8 @@ public sealed class GatewayService
             var settings = _getSettings();
             if (!settings.Enabled || !settings.GatewayEnabled)
             {
-                await WriteError(context, 503, new OpenCodeError(
-                    "server_error", "OpenCode gateway is disabled.", 503, null, "gateway_disabled"));
+                await ClientErrorAsync(503, new OpenCodeError(
+                    "server_error", "OpenCode gateway is disabled.", 503, null, "gateway_disabled"), "chat");
                 return;
             }
 
@@ -199,24 +274,50 @@ public sealed class GatewayService
 
             if (body.IsNullOrEmpty())
             {
-                await WriteError(context, 400, new OpenCodeError(
-                    "invalid_request_error", "Request body is required.", 400));
+                await ClientErrorAsync(400, new OpenCodeError(
+                    "invalid_request_error", "Request body is required.", 400), "chat");
                 return;
             }
 
-            var request = clientFormat == "chat"
-                ? ClientFormat.ParseChatRequest(body)
-                : ClientFormat.ParseResponsesRequest(body);
+            var request = clientFormat switch
+            {
+                "chat" => ClientFormat.ParseChatRequest(body),
+                "anthropic" => ClientFormat.ParseAnthropicRequest(body),
+                _ => ClientFormat.ParseResponsesRequest(body),
+            };
 
             if (request is null)
             {
-                await WriteError(context, 400, new OpenCodeError(
-                    "invalid_request_error", "Malformed request body.", 400));
+                await ClientErrorAsync(400, new OpenCodeError(
+                    "invalid_request_error", "Malformed request body.", 400), clientFormat);
                 return;
             }
 
-            var modelRef = request.Model.IsNullOrEmpty() ? settings.DefaultModel : request.Model;
-            var result = await _executor.ExecuteAsync(request, settings, context.RequestAborted);
+            // Clients may send either the bare catalog id or a claude- alias id
+            // (e.g. a model name copied from the /claude/v1 model list into a
+            // non-alias client, or Claude Code itself). Resolve against the bare id;
+            // echo the name the client used (or the claude-prefixed default on the
+            // alias routes) so responses stay consistent with the model list.
+            var rawModel = request.Model.IsNullOrEmpty() ? settings.DefaultModel : request.Model;
+            var bareModel = StripClaudePrefix(rawModel);
+            request = request with { Model = bareModel };
+            modelRef = claudeAlias ? ApplyClaudePrefix(bareModel) : rawModel;
+
+            if (settings.FreeOnly)
+            {
+                var (_, resolvedModel) = _catalog.ResolveTargetModel(bareModel, settings);
+                if (resolvedModel is null || !resolvedModel.IsFree)
+                {
+                    await ClientErrorAsync(404, new OpenCodeError(
+                        "not_found_error", $"Model '{modelRef}' not found.", 404, null, "model_not_found"), clientFormat);
+                    return;
+                }
+            }
+
+            ClientLog(null, null, $"stream={request.Stream} stop={request.Stop?.Count ?? 0} " +
+                $"messages={request.Messages.Count} tools={request.Tools?.Count ?? 0}");
+
+            var result = await _executor.ExecuteAsync(request, settings, context.RequestAborted, requestId);
 
             if (!result.Success)
             {
@@ -228,42 +329,50 @@ public sealed class GatewayService
                     context.Response.Headers["Retry-After"] = result.RetryAfter;
                 }
 
-                await WriteError(context, status, result.Error ?? new OpenCodeError(
-                    "server_error", "Request failed.", status));
+                await ClientErrorAsync(status, result.Error ?? new OpenCodeError(
+                    "server_error", "Request failed.", status), clientFormat);
                 return;
             }
 
             if (request.Stream && result.Events is not null)
             {
-                await WriteStream(context, clientFormat, modelRef, result.Events);
+                var streamedOk = await WriteStream(context, clientFormat, modelRef, result.Events);
+                ClientLog(streamedOk, 200,
+                    streamedOk ? "stream completed" : "stream aborted with upstream error");
                 return;
             }
 
             if (result.Response is null)
             {
-                await WriteError(context, 502, new OpenCodeError(
-                    "server_error", "Upstream returned no content.", 502));
+                await ClientErrorAsync(502, new OpenCodeError(
+                    "server_error", "Upstream returned no content.", 502), clientFormat);
                 return;
             }
 
-            var json = clientFormat == "chat"
-                ? ClientFormat.WriteChatCompletion(result.Response, modelRef)
-                : ClientFormat.WriteResponses(result.Response, modelRef);
+            var json = clientFormat switch
+            {
+                "chat" => ClientFormat.WriteChatCompletion(result.Response, modelRef),
+                "anthropic" => ClientFormat.WriteAnthropicMessage(result.Response, modelRef),
+                _ => ClientFormat.WriteResponses(result.Response, modelRef),
+            };
             await WriteJson(context, 200, json);
+            ClientLog(true, 200, "non-stream completed");
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
             // Client disconnected; upstream cancellation is handled by the executor.
+            ClientLog(false, null, "client disconnected");
         }
         catch (Exception ex)
         {
             Logging.SaveLog(Tag, ex);
+            ClientLog(false, 500, $"internal gateway error: {ex.Message}");
             try
             {
                 if (!context.Response.HasStarted)
                 {
                     await WriteError(context, 500, new OpenCodeError(
-                        "server_error", "Internal gateway error.", 500));
+                        "server_error", "Internal gateway error.", 500), clientFormat);
                 }
             }
             catch
@@ -277,7 +386,7 @@ public sealed class GatewayService
         }
     }
 
-    private async Task WriteStream(
+    private async Task<bool> WriteStream(
         HttpContext context,
         string clientFormat,
         string modelRef,
@@ -286,6 +395,25 @@ public sealed class GatewayService
         context.Response.ContentType = "text/event-stream";
         context.Response.Headers.CacheControl = "no-cache";
         var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        if (clientFormat == "anthropic")
+        {
+            var writer = new AnthropicStreamWriter(modelRef);
+            await foreach (var evt in events.WithCancellation(context.RequestAborted))
+            {
+                foreach (var (eventName, json) in writer.Write(evt))
+                {
+                    await WriteSse(context, eventName, json);
+                    if (eventName is "message_stop" or "error")
+                    {
+                        return eventName == "message_stop";
+                    }
+                }
+            }
+
+            return true;
+        }
+
         var responseId = clientFormat == "chat"
             ? $"chatcmpl-{Guid.NewGuid().ToString("N")[..12]}"
             : $"resp_{Guid.NewGuid().ToString("N")[..12]}";
@@ -298,7 +426,7 @@ public sealed class GatewayService
                     evt.ErrorType ?? "server_error",
                     evt.ErrorMessage ?? "Upstream error."));
                 await WriteSse(context, "error", errorJson);
-                return;
+                return false;
             }
 
             if (clientFormat == "chat")
@@ -316,7 +444,7 @@ public sealed class GatewayService
                 {
                     await context.Response.WriteAsync("data: [DONE]\n\n", context.RequestAborted);
                     await context.Response.Body.FlushAsync(context.RequestAborted);
-                    return;
+                    return true;
                 }
             }
             else
@@ -331,7 +459,7 @@ public sealed class GatewayService
 
                 if (evt.Type == NormalizedStreamEventType.Done)
                 {
-                    return;
+                    return true;
                 }
             }
         }
@@ -341,6 +469,8 @@ public sealed class GatewayService
             await context.Response.WriteAsync("data: [DONE]\n\n", context.RequestAborted);
             await context.Response.Body.FlushAsync(context.RequestAborted);
         }
+
+        return true;
     }
 
     private static async Task WriteSse(HttpContext context, string eventName, string json)
@@ -357,8 +487,11 @@ public sealed class GatewayService
         await context.Response.WriteAsync(json, context.RequestAborted);
     }
 
-    private static async Task WriteError(HttpContext context, int status, OpenCodeError error)
+    private static async Task WriteError(HttpContext context, int status, OpenCodeError error, string clientFormat = "chat")
     {
-        await WriteJson(context, status, ClientFormat.WriteError(error));
+        var json = clientFormat == "anthropic"
+            ? ClientFormat.WriteAnthropicError(error)
+            : ClientFormat.WriteError(error);
+        await WriteJson(context, status, json);
     }
 }

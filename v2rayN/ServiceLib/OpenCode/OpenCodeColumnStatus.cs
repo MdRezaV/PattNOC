@@ -2,40 +2,32 @@ namespace ServiceLib.OpenCode;
 
 public static class OpenCodeColumnStatus
 {
-    public static string Format(ConnectivityTestResult result)
+    public const string NotTestedBox = "⬜";
+    public const string SuccessBox = "🟩";
+    public const string RateLimitedBox = "🟨";
+    public const string FailedBox = "🟥";
+
+    /// <summary>Connection/timeout failures that abort the whole model sequence.</summary>
+    public static bool IsCritical(EOpenCodeConnectivityState state)
     {
-        var message = result.State switch
-        {
-            EOpenCodeConnectivityState.OpenCodeAccepted => ResUI.OpenCodeColWorking,
-            EOpenCodeConnectivityState.AuthorizationFailed => ResUI.OpenCodeColForbidden,
-            EOpenCodeConnectivityState.AuthenticationFailed => ResUI.OpenCodeColUnauthenticated,
-            EOpenCodeConnectivityState.FreeUsageLimit => ResUI.OpenCodeColIpLimit,
-            EOpenCodeConnectivityState.RateLimited => ResUI.OpenCodeColRateLimited,
-            EOpenCodeConnectivityState.NetworkError => ResUI.OpenCodeColConnectionFailed,
-            EOpenCodeConnectivityState.Timeout => ResUI.OpenCodeColTimeout,
-            EOpenCodeConnectivityState.ProviderError => ResUI.OpenCodeColProviderError,
-            EOpenCodeConnectivityState.ModelNotFound => ResUI.OpenCodeColModelNotFound,
-            EOpenCodeConnectivityState.UnsupportedRequest => ResUI.OpenCodeColUnsupported,
-            EOpenCodeConnectivityState.ClientRestricted => ResUI.OpenCodeColNoProxy,
-            EOpenCodeConnectivityState.Testing => ResUI.OpenCodeColTesting,
-            _ => ResUI.OpenCodeColUnknown,
-        };
+        return state is EOpenCodeConnectivityState.NetworkError
+            or EOpenCodeConnectivityState.Timeout
+            or EOpenCodeConnectivityState.Unknown
+            or EOpenCodeConnectivityState.ClientRestricted;
+    }
 
-        var code = result.HttpStatus ?? result.State switch
+    public static string ToBox(EOpenCodeConnectivityState state)
+    {
+        return state switch
         {
-            EOpenCodeConnectivityState.OpenCodeAccepted => 200,
-            EOpenCodeConnectivityState.UnsupportedRequest => 400,
-            EOpenCodeConnectivityState.AuthenticationFailed => 401,
-            EOpenCodeConnectivityState.AuthorizationFailed => 403,
-            EOpenCodeConnectivityState.ModelNotFound => 404,
-            EOpenCodeConnectivityState.FreeUsageLimit or EOpenCodeConnectivityState.RateLimited => 429,
-            EOpenCodeConnectivityState.ProviderError => 500,
-            EOpenCodeConnectivityState.NetworkError => 502,
-            EOpenCodeConnectivityState.ClientRestricted => 503,
-            EOpenCodeConnectivityState.Timeout => 504,
-            _ => 0,
+            EOpenCodeConnectivityState.OpenCodeAccepted => SuccessBox,
+            EOpenCodeConnectivityState.RateLimited or EOpenCodeConnectivityState.FreeUsageLimit => RateLimitedBox,
+            _ => FailedBox,
         };
+    }
 
-        return code > 0 ? $"{code} {message}" : message;
+    public static string AllNotTested(int modelCount)
+    {
+        return modelCount > 0 ? string.Concat(Enumerable.Repeat(NotTestedBox, modelCount)) : string.Empty;
     }
 }

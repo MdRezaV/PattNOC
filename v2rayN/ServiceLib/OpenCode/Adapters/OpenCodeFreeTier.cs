@@ -27,11 +27,6 @@ internal static class OpenCodeFreeTier
 
     public static string GenerateRequestId() => GenerateId("msg_");
 
-    public static void RegenerateSession()
-    {
-        // Session is regenerated per request; nothing to persist.
-    }
-
     internal static bool IsFreeTierTarget(OpenCodeTargetItem target)
     {
         return target.KeyOptional
@@ -73,53 +68,50 @@ internal static class OpenCodeFreeTier
         msg.Headers.TryAddWithoutValidation("sec-fetch-mode", "cors");
     }
 
-    internal static void ApplyBodyShape(Dictionary<string, object?> body, EOpenCodeApiStyle apiStyle)
-    {
-        // Mirror the official OpenCode desktop client fingerprint body:
-        // four unavailable core tools sorted alphabetically, tool_choice per API style,
-        // no permissions field, no stream_options field.
-        body["tools"] = new List<object?>
-        {
-            CreateUnavailableTool("bash", apiStyle),
-            CreateUnavailableTool("glob", apiStyle),
-            CreateUnavailableTool("grep", apiStyle),
-            CreateUnavailableTool("read", apiStyle),
-        };
-        // Responses API upstream only accepts "auto" for tool_choice; Chat Completions
-        // free-tier fingerprint uses "none".
-        body["tool_choice"] = apiStyle == EOpenCodeApiStyle.Responses ? "auto" : "none";
-        body.Remove("permissions");
-        body.Remove("stream_options");
-    }
+    /// <summary>
+    /// Fields third-party clients (Claude Code, SDKs, curl) inject but the official
+    /// OpenCode desktop client never sends. The free tier fingerprints the whole
+    /// envelope, not just the tools block, so any of these left in the body trips
+    /// FreeTierError ("can only be used from within OpenCode"). Key names differ per
+    /// API style — Chat Completions uses max_tokens, Responses uses max_output_tokens.
+    /// </summary>
+    private static readonly string[] ClientOnlyFields =
+    [
+        // sampling
+        "temperature", "top_p", "top_k", "presence_penalty", "frequency_penalty",
+        "seed", "logit_bias", "n", "logprobs", "top_logprobs",
+        // length limits
+        "max_tokens", "max_completion_tokens", "max_output_tokens",
+        // identity / metadata
+        "user", "metadata", "store",
+        // tooling extras
+        "parallel_tool_calls", "thinking", "response_format", "text",
+        // permissions / stream plumbing
+        "permissions", "stream_options",
+        // stop sequences — parsed from OpenAI "stop" and Anthropic "stop_sequences",
+        // but never sent by the official client, so they fingerprint as third-party.
+        "stop",
+    ];
 
-    private static Dictionary<string, object?> CreateUnavailableTool(string name, EOpenCodeApiStyle apiStyle)
+    internal static IReadOnlyDictionary<string, string> ApplyBodyShape(
+        Dictionary<string, object?> body, EOpenCodeApiStyle apiStyle)
     {
-        var description = "This tool is currently unavailable and must not be used.";
-        var parameters = new Dictionary<string, object?>
-        {
-            ["type"] = "object",
-            ["properties"] = new Dictionary<string, object?>(),
-        };
+        // Preserve the caller's tools while satisfying the free-tier gate on the
+        // lowercase file-search quartet. Returns the quartet rename map
+        // (sent name → caller's name) so the response path can hand the agent
+        // its own tool spellings back.
+        var renamed = OpenCodeFingerprintTools.Apply(
+            body, apiStyle == EOpenCodeApiStyle.Responses);
 
-        return apiStyle switch
+        // Zen rejects non-streaming requests on the free tier, so always stream
+        // upstream even for non-streaming clients (answers are aggregated).
+        body["stream"] = true;
+
+        foreach (var key in ClientOnlyFields)
         {
-            EOpenCodeApiStyle.Responses => new Dictionary<string, object?>
-            {
-                ["type"] = "function",
-                ["name"] = name,
-                ["description"] = description,
-                ["parameters"] = parameters,
-            },
-            _ => new Dictionary<string, object?>
-            {
-                ["type"] = "function",
-                ["function"] = new Dictionary<string, object?>
-                {
-                    ["name"] = name,
-                    ["description"] = description,
-                    ["parameters"] = parameters,
-                },
-            },
-        };
+            body.Remove(key);
+        }
+
+        return renamed;
     }
 }

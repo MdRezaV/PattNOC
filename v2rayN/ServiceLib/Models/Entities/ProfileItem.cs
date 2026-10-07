@@ -60,7 +60,7 @@ public class ProfileItem
     }
 
     /// <summary>
-    /// PattN: the Xray outbound targetStrategy chosen for this profile, or null when it is blank or
+    /// PattNOC: the Xray outbound targetStrategy chosen for this profile, or null when it is blank or
     /// AsIs (Xray's default), so that such a profile stores nothing and its outbound carries no field.
     /// </summary>
     public string? GetTargetStrategy()

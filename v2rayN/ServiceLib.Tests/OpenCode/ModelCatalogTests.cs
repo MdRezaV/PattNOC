@@ -37,19 +37,18 @@ public class ModelCatalogTests
     private static OpenCodeItem Settings(string defaultTarget = "opencode-free") => new()
     {
         DefaultTarget = defaultTarget,
-        DefaultModel = "big-pickle",
+        DefaultModel = "",
         Targets = TargetCatalogDefaults.CreateDefaultTargets(),
     };
 
     [Test]
-    public async Task GetModels_ReturnsFreeDefaults_WhenNoCache()
+    public async Task GetModels_ReturnsEmpty_WhenNoCache()
     {
         var catalog = CreateCatalog();
 
         var models = catalog.GetModels("opencode-free");
 
-        await models.Should().NotBeEmpty();
-        await models.Should().Contain(m => m.Id == "big-pickle");
+        await models.Should().BeEmpty();
     }
 
     [Test]
@@ -62,60 +61,135 @@ public class ModelCatalogTests
     [Test]
     public async Task Resolve_BareModel_UsesDefaultTarget()
     {
-        var catalog = CreateCatalog();
+        var cachePath = TempCachePath();
+        var cache = new OpenCodeCatalogCache
+        {
+            UpdatedAt = DateTime.UtcNow,
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("test-model", "Test Model", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote"),
+                ],
+            },
+        };
+        File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+        var catalog = CreateCatalog(cachePath);
 
-        var model = catalog.Resolve("big-pickle", "opencode-free");
+        var model = catalog.Resolve("test-model", "opencode-free");
 
         await model.Should().NotBeNull();
-        await model!.Id.Should().BeEqualTo("big-pickle");
+        await model!.Id.Should().BeEqualTo("test-model");
+        try { File.Delete(cachePath); } catch { }
     }
 
     [Test]
     public async Task Resolve_TargetModelRef_ParsesBothParts()
     {
-        var catalog = CreateCatalog();
+        var cachePath = TempCachePath();
+        var cache = new OpenCodeCatalogCache
+        {
+            UpdatedAt = DateTime.UtcNow,
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("model-a", "Model A", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote"),
+                ],
+            },
+        };
+        File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+        var catalog = CreateCatalog(cachePath);
 
-        var model = catalog.Resolve("opencode-free/space-bunny-free", "opencode-free");
+        var model = catalog.Resolve("opencode-free/model-a", "opencode-free");
 
         await model.Should().NotBeNull();
-        await model!.Id.Should().BeEqualTo("space-bunny-free");
+        await model!.Id.Should().BeEqualTo("model-a");
+        try { File.Delete(cachePath); } catch { }
     }
 
     [Test]
     public async Task ResolveModelAndTarget_BareModel_ReturnsDefaultTarget()
     {
-        var catalog = CreateCatalog();
+        var cachePath = TempCachePath();
         var settings = Settings();
+        var cache = new OpenCodeCatalogCache
+        {
+            UpdatedAt = DateTime.UtcNow,
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("test-model", "Test Model", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote"),
+                ],
+            },
+        };
+        File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+        var catalog = CreateCatalog(cachePath);
 
-        var (target, model) = catalog.ResolveTargetModel("big-pickle", settings);
+        var (target, model) = catalog.ResolveTargetModel("test-model", settings);
 
         await target.Should().NotBeNull();
         await target!.Id.Should().BeEqualTo("opencode-free");
-        await model!.Id.Should().BeEqualTo("big-pickle");
+        await model!.Id.Should().BeEqualTo("test-model");
+        try { File.Delete(cachePath); } catch { }
     }
 
     [Test]
     public async Task ResolveTargetModel_ExplicitTargetRef_UsesThatTarget()
     {
-        var catalog = CreateCatalog();
+        var cachePath = TempCachePath();
         var settings = Settings();
+        var cache = new OpenCodeCatalogCache
+        {
+            UpdatedAt = DateTime.UtcNow,
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("model-a", "Model A", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote"),
+                ],
+            },
+        };
+        File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+        var catalog = CreateCatalog(cachePath);
 
-        var (target, model) = catalog.ResolveTargetModel("opencode-free/mimo-v2.5-free", settings);
+        var (target, model) = catalog.ResolveTargetModel("opencode-free/model-a", settings);
 
         await target!.Id.Should().BeEqualTo("opencode-free");
-        await model!.Id.Should().BeEqualTo("mimo-v2.5-free");
+        await model!.Id.Should().BeEqualTo("model-a");
+        try { File.Delete(cachePath); } catch { }
     }
 
     [Test]
     public async Task ResolveTargetModel_UnknownModel_ReturnsNullModel()
     {
-        var catalog = CreateCatalog();
+        var cachePath = TempCachePath();
         var settings = Settings();
+        var cache = new OpenCodeCatalogCache
+        {
+            UpdatedAt = DateTime.UtcNow,
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("test-model", "Test Model", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote"),
+                ],
+            },
+        };
+        File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+        var catalog = CreateCatalog(cachePath);
 
         var (target, model) = catalog.ResolveTargetModel("does-not-exist", settings);
 
         await model.Should().BeNull();
         await target.Should().NotBeNull();
+        try { File.Delete(cachePath); } catch { }
     }
 
     [Test]
@@ -136,7 +210,7 @@ public class ModelCatalogTests
         var catalog = CreateCatalog();
         var settings = Settings();
 
-        var (target, model) = catalog.ResolveTargetModel("unknown-target/big-pickle", settings);
+        var (target, model) = catalog.ResolveTargetModel("unknown-target/unknown-model", settings);
 
         await target.Should().BeNull();
         await model.Should().BeNull();
@@ -145,18 +219,33 @@ public class ModelCatalogTests
     [Test]
     public async Task ResolveTargetModel_DisabledTarget_ReturnsNullTarget()
     {
-        var catalog = CreateCatalog();
+        var cachePath = TempCachePath();
         var settings = Settings();
         settings.Targets[0].Enabled = false;
+        var cache = new OpenCodeCatalogCache
+        {
+            UpdatedAt = DateTime.UtcNow,
+            ModelsByTarget =
+            {
+                ["opencode-free"] =
+                [
+                    new OpenCodeModel("test-model", "Test Model", EOpenCodeApiStyle.ChatCompletions,
+                        null, true, true, true, false, "remote"),
+                ],
+            },
+        };
+        File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+        var catalog = CreateCatalog(cachePath);
 
-        var (target, model) = catalog.ResolveTargetModel("big-pickle", settings);
+        var (target, model) = catalog.ResolveTargetModel("test-model", settings);
 
         await target.Should().BeNull();
         await model.Should().NotBeNull();
+        try { File.Delete(cachePath); } catch { }
     }
 
     [Test]
-    public async Task RefreshAsync_WithoutCatalogUrl_SucceedsAndKeepsDefaults()
+    public async Task RefreshAsync_WithoutCatalogUrl_SucceedsAndReturnsEmpty()
     {
         var cachePath = TempCachePath();
         try
@@ -174,7 +263,7 @@ public class ModelCatalogTests
             var ok = await catalog.RefreshAsync(target);
 
             await ok.Should().BeTrue();
-            await catalog.GetModels("opencode-free").Should().Contain(m => m.Id == "big-pickle");
+            await catalog.GetModels("opencode-free").Should().BeEmpty();
         }
         finally
         {
@@ -194,7 +283,7 @@ public class ModelCatalogTests
             var handler = new StubHttpHandler(_ => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
             {
                 Content = new StringContent(
-                    """{"data":[{"id":"remote-model-a"},{"id":"big-pickle"}]}""",
+                    """{"data":[{"id":"remote-model-a"},{"id":"remote-model-b"}]}""",
                     Encoding.UTF8, "application/json"),
             });
             var catalog = new ModelCatalog(new FakeProxyProvider(), cachePath, () => handler);
@@ -211,11 +300,11 @@ public class ModelCatalogTests
 
             await ok.Should().BeTrue();
             var models = catalog.GetModels("opencode-free");
-            await models.Should().Contain(m => m.Id == "remote-model-a");
-            await models.Should().Contain(m => m.Id == "big-pickle");
-            // remote-model-a has no -free suffix → IsFree false; big-pickle inherits from defaults → IsFree true
-            await models.Should().Contain(m => m.Id == "remote-model-a" && !m.IsFree);
-            await models.Should().Contain(m => m.Id == "big-pickle" && m.IsFree);
+            await models.Should().HaveCount(2);
+            await models.Should().Contain(m => m.Id == "remote-model-a" && m.Source == "remote");
+            await models.Should().Contain(m => m.Id == "remote-model-b" && m.Source == "remote");
+            // All models from remote should have Source="remote"
+            await models.All(m => m.Source == "remote").Should().BeTrue();
         }
         finally
         {
@@ -227,7 +316,7 @@ public class ModelCatalogTests
     }
 
     [Test]
-    public async Task RefreshAsync_HttpFailure_KeepsBuiltInDefaults()
+    public async Task RefreshAsync_HttpFailure_ReturnsEmpty()
     {
         var cachePath = TempCachePath();
         try
@@ -249,7 +338,7 @@ public class ModelCatalogTests
             var ok = await catalog.RefreshAsync(target);
 
             await ok.Should().BeFalse();
-            await catalog.GetModels("opencode-free").Should().Contain(m => m.Id == "big-pickle");
+            await catalog.GetModels("opencode-free").Should().BeEmpty();
         }
         finally
         {
@@ -284,7 +373,45 @@ public class ModelCatalogTests
             var models = catalog2.GetModels("opencode-free");
 
             await models.Should().HaveCount(1);
-            await models.Should().Contain(m => m.Id == "cached-model");
+            await models.Should().Contain(m => m.Id == "cached-model" && m.Source == "remote");
+        }
+        finally
+        {
+            if (File.Exists(cachePath))
+            {
+                File.Delete(cachePath);
+            }
+        }
+    }
+
+    [Test]
+    public async Task LoadCache_FiltersOutDefaultSourceEntries()
+    {
+        var cachePath = TempCachePath();
+        try
+        {
+            var cache = new OpenCodeCatalogCache
+            {
+                UpdatedAt = DateTime.UtcNow,
+                ModelsByTarget =
+                {
+                    ["opencode-free"] =
+                    [
+                        new OpenCodeModel("legacy-default", "Legacy Default", EOpenCodeApiStyle.ChatCompletions,
+                            null, true, true, true, false, "default"),
+                        new OpenCodeModel("remote-model", "Remote Model", EOpenCodeApiStyle.ChatCompletions,
+                            null, true, true, true, false, "remote"),
+                    ],
+                },
+            };
+            File.WriteAllText(cachePath, JsonUtils.Serialize(cache, true));
+
+            var catalog = CreateCatalog(cachePath);
+            var models = catalog.GetModels("opencode-free");
+
+            await models.Should().HaveCount(1);
+            await models.Should().Contain(m => m.Id == "remote-model" && m.Source == "remote");
+            await models.Any(m => m.Id == "legacy-default").Should().BeFalse();
         }
         finally
         {

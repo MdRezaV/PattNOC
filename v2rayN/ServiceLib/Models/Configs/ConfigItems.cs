@@ -29,7 +29,7 @@ public class InItem
     public string Protocol { get; set; }
     public bool UdpEnabled { get; set; }
     public bool SniffingEnabled { get; set; } = true;
-    // PattN: quic sniffing is on by default
+    // PattNOC: quic sniffing is on by default
     public List<string>? DestOverride { get; set; } = ["http", "tls", "quic"];
     public bool RouteOnly { get; set; }
     public bool AllowLANConn { get; set; }
@@ -165,6 +165,14 @@ public class SpeedTestItem
     public string UdpTestTarget { get; set; }
     public int? SpeedTestPageSize { get; set; }
     public int? SpeedTestDelayInterval { get; set; }
+
+    public int RealDelayTimeoutSeconds { get; set; }
+    public int RealDelayConcurrentCount { get; set; }
+    public int RealDelayRetryCount { get; set; } = 1;
+    public int MultiDelayTimeoutSeconds { get; set; }
+    public int MultiSpeedTimeoutSeconds { get; set; }
+    public int MultiConcurrentCount { get; set; }
+    public int MultiRetryCount { get; set; } = 1;
 }
 
 [Serializable]
@@ -325,6 +333,7 @@ public class OpenCodeItem
 {
     public bool Enabled { get; set; }
     public bool GatewayEnabled { get; set; } = true;
+    public bool FreeOnly { get; set; }
     public string DefaultTarget { get; set; } = "opencode-free";
     public string DefaultModel { get; set; } = "big-pickle";
     public string GatewayHost { get; set; } = "127.0.0.1";
@@ -333,6 +342,8 @@ public class OpenCodeItem
     public int RequestTimeoutSeconds { get; set; } = 120;
     public int MaxRetry { get; set; } = 1;
     public int MaxConcurrentRequests { get; set; } = 8;
+    public bool DebugLogRequests { get; set; }
+    public List<string> TestModelOrder { get; set; } = [];
     public List<OpenCodeTargetItem> Targets { get; set; } = [];
 }
 

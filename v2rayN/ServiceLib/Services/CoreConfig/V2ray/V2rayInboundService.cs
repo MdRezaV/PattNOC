@@ -81,7 +81,7 @@ public partial class CoreConfigV2rayService
                     tunInbound.settings.gateway.Add(address6);
                 }
 
-                // PattN: on Linux with systemd-resolved, Xray points the system resolver at the tun, so
+                // PattNOC: on Linux with systemd-resolved, Xray points the system resolver at the tun, so
                 // system DNS goes through Xray (and the port 53 rule) instead of leaking past the tunnel,
                 // as the tun's dns list already does on Windows. Other platforms ignore it, and Xray leaves
                 // DNS alone when its own DNS could loop through the system resolver ("localhost", which
@@ -94,7 +94,7 @@ public partial class CoreConfigV2rayService
                     tunInbound.settings.autoOutboundsInterface = bindInterface;
                 }
                 tunInbound.sniffing = inbound.sniffing;
-                // PattN: respect the user's Route Only setting in TUN mode (upstream forces true)
+                // PattNOC: respect the user's Route Only setting in TUN mode (upstream forces true)
                 // tunInbound.sniffing.routeOnly = true;
 
                 if (_config.TunModeItem.RouteExcludeAddress is { Count: > 0 })
@@ -165,7 +165,7 @@ public partial class CoreConfigV2rayService
         inbound.protocol = nameof(EInboundProtocol.mixed);
         inbound.settings.udp = inItem.UdpEnabled;
         inbound.sniffing.enabled = inItem.SniffingEnabled;
-        // PattN: copy the list; adding "fakedns" below must not leak into the saved settings
+        // PattNOC: copy the list; adding "fakedns" below must not leak into the saved settings
         inbound.sniffing.destOverride = inItem.DestOverride?.ToList();
         inbound.sniffing.routeOnly = inItem.RouteOnly;
 
@@ -180,7 +180,7 @@ public partial class CoreConfigV2rayService
         }
         else
         {
-            // PattN: drop "fakedns" that older builds persisted into the settings while FakeIP was on
+            // PattNOC: drop "fakedns" that older builds persisted into the settings while FakeIP was on
             inbound.sniffing.destOverride?.Remove("fakedns");
         }
 

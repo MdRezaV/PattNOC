@@ -58,6 +58,13 @@ public partial class OptionSettingViewModel : MyReactiveObject, ICloseable
     [Reactive] public partial string SpeedPingTestUrl { get; set; }
     [Reactive] public partial string UdpTestTarget { get; set; }
     [Reactive] public partial int MixedConcurrencyCount { get; set; }
+    [Reactive] public partial int RealDelayTimeoutSeconds { get; set; }
+    [Reactive] public partial int RealDelayConcurrentCount { get; set; }
+    [Reactive] public partial int RealDelayRetryCount { get; set; }
+    [Reactive] public partial int MultiDelayTimeoutSeconds { get; set; }
+    [Reactive] public partial int MultiSpeedTimeoutSeconds { get; set; }
+    [Reactive] public partial int MultiConcurrentCount { get; set; }
+    [Reactive] public partial int MultiRetryCount { get; set; }
     [Reactive] public partial bool EnableHWA { get; set; }
     [Reactive] public partial string SubConvertUrl { get; set; }
     [Reactive] public partial int MainGirdOrientation { get; set; }
@@ -202,6 +209,13 @@ public partial class OptionSettingViewModel : MyReactiveObject, ICloseable
         MixedConcurrencyCount = _config.SpeedTestItem.MixedConcurrencyCount;
         SpeedPingTestUrl = _config.SpeedTestItem.SpeedPingTestUrl;
         UdpTestTarget = _config.SpeedTestItem.UdpTestTarget;
+        RealDelayTimeoutSeconds = _config.SpeedTestItem.RealDelayTimeoutSeconds;
+        RealDelayConcurrentCount = _config.SpeedTestItem.RealDelayConcurrentCount;
+        RealDelayRetryCount = _config.SpeedTestItem.RealDelayRetryCount;
+        MultiDelayTimeoutSeconds = _config.SpeedTestItem.MultiDelayTimeoutSeconds;
+        MultiSpeedTimeoutSeconds = _config.SpeedTestItem.MultiSpeedTimeoutSeconds;
+        MultiConcurrentCount = _config.SpeedTestItem.MultiConcurrentCount;
+        MultiRetryCount = _config.SpeedTestItem.MultiRetryCount;
         EnableHWA = _config.GuiItem.EnableHWA;
         SubConvertUrl = _config.ConstItem.SubConvertUrl;
         MainGirdOrientation = (int)_config.UiItem.MainGirdOrientation;
@@ -389,6 +403,14 @@ public partial class OptionSettingViewModel : MyReactiveObject, ICloseable
         _config.SpeedTestItem.SpeedTestUrl = SpeedTestUrl;
         _config.SpeedTestItem.SpeedPingTestUrl = SpeedPingTestUrl;
         _config.SpeedTestItem.UdpTestTarget = UdpTestTarget;
+        _config.SpeedTestItem.RealDelayTimeoutSeconds = RealDelayTimeoutSeconds;
+        _config.SpeedTestItem.RealDelayConcurrentCount = RealDelayConcurrentCount;
+        _config.SpeedTestItem.RealDelayRetryCount = RealDelayRetryCount;
+        _config.SpeedTestItem.MultiDelayTimeoutSeconds = MultiDelayTimeoutSeconds;
+        _config.SpeedTestItem.MultiSpeedTimeoutSeconds = MultiSpeedTimeoutSeconds;
+        _config.SpeedTestItem.MultiConcurrentCount = MultiConcurrentCount;
+        _config.SpeedTestItem.MultiRetryCount = MultiRetryCount;
+        ConfigHandler.NormalizeTestExecutionOptions(_config.SpeedTestItem);
         _config.GuiItem.EnableHWA = EnableHWA;
         _config.ConstItem.SubConvertUrl = SubConvertUrl;
         _config.UiItem.MainGirdOrientation = (EGirdOrientation)MainGirdOrientation;

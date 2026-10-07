@@ -15,6 +15,9 @@ public partial class OpenCodeWindow : WindowBase<OpenCodeViewModel>
             this.BindCommand(ViewModel, vm => vm.TestConnectionCmd, v => v.btnTest).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.SaveApiKeyCmd, v => v.btnSaveApiKey).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.ClearApiKeyCmd, v => v.btnClearApiKey).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.MovePriorityUpCmd, v => v.btnPriorityUp).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.MovePriorityDownCmd, v => v.btnPriorityDown).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.RemovePriorityCmd, v => v.btnPriorityRemove).DisposeWith(disposables);
 
             this.OneWayBind(ViewModel, vm => vm.Enabled, v => v.chkEnabled.IsChecked).DisposeWith(disposables);
             this.OneWayBind(ViewModel, vm => vm.GatewayEnabled, v => v.chkGatewayEnabled.IsChecked).DisposeWith(disposables);

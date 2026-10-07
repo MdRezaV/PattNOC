@@ -48,8 +48,16 @@ public partial class OptionSettingWindow : WindowBase<OptionSettingViewModel>
         cmbCoreType7.ItemsSource = Global.CoreTypes;
         cmbCoreType9.ItemsSource = Global.CoreTypes;
 
-        cmbMixedConcurrencyCount.ItemsSource = Enumerable.Range(Global.SpeedTestConcurrencyCountMin, Global.SpeedTestConcurrencyCountMax - Global.SpeedTestConcurrencyCountMin + 1).ToList();
-        cmbSpeedTestTimeout.ItemsSource = Enumerable.Range(2, 5).Select(i => i * 5).ToList();
+        var concurrencyOptions = Enumerable.Range(Global.SpeedTestConcurrencyCountMin, Global.SpeedTestConcurrencyCountMax - Global.SpeedTestConcurrencyCountMin + 1).ToList();
+        var timeoutOptions = Enumerable.Range(Global.TestTimeoutSecondsMin, Global.TestTimeoutSecondsMax - Global.TestTimeoutSecondsMin + 1).ToList();
+        var retryOptions = Enumerable.Range(Global.TestRetryCountMin, Global.TestRetryCountMax - Global.TestRetryCountMin + 1).ToList();
+        cmbRealDelayTimeout.ItemsSource = timeoutOptions;
+        cmbMultiDelayTimeout.ItemsSource = timeoutOptions;
+        cmbMultiSpeedTimeout.ItemsSource = timeoutOptions;
+        cmbRealDelayConcurrent.ItemsSource = concurrencyOptions;
+        cmbMultiConcurrent.ItemsSource = concurrencyOptions;
+        cmbRealDelayRetry.ItemsSource = retryOptions;
+        cmbMultiRetry.ItemsSource = retryOptions;
         cmbSpeedTestUrl.ItemsSource = Global.SpeedTestUrls;
         cmbSpeedPingTestUrl.ItemsSource = Global.SpeedPingTestUrls;
         cmbUdpTestTarget.ItemsSource = Global.UdpTestTargets;
@@ -108,11 +116,16 @@ public partial class OptionSettingWindow : WindowBase<OptionSettingViewModel>
             this.Bind(ViewModel, vm => vm.DoubleClick2Activate, v => v.togDoubleClick2Activate.IsChecked).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.AutoUpdateInterval, v => v.txtautoUpdateInterval.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.CurrentFontFamily, v => v.cmbcurrentFontFamily.Text).DisposeWith(disposables);
-            this.Bind(ViewModel, vm => vm.SpeedTestTimeout, v => v.cmbSpeedTestTimeout.SelectedValue).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.RealDelayTimeoutSeconds, v => v.cmbRealDelayTimeout.SelectedValue).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.RealDelayConcurrentCount, v => v.cmbRealDelayConcurrent.SelectedValue).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.RealDelayRetryCount, v => v.cmbRealDelayRetry.SelectedValue).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.MultiDelayTimeoutSeconds, v => v.cmbMultiDelayTimeout.SelectedValue).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.MultiSpeedTimeoutSeconds, v => v.cmbMultiSpeedTimeout.SelectedValue).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.MultiConcurrentCount, v => v.cmbMultiConcurrent.SelectedValue).DisposeWith(disposables);
+            this.Bind(ViewModel, vm => vm.MultiRetryCount, v => v.cmbMultiRetry.SelectedValue).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SpeedTestUrl, v => v.cmbSpeedTestUrl.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SpeedPingTestUrl, v => v.cmbSpeedPingTestUrl.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.UdpTestTarget, v => v.cmbUdpTestTarget.Text).DisposeWith(disposables);
-            this.Bind(ViewModel, vm => vm.MixedConcurrencyCount, v => v.cmbMixedConcurrencyCount.SelectedValue).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.SubConvertUrl, v => v.cmbSubConvertUrl.Text).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.MainGirdOrientation, view => view.cmbMainGirdOrientation.SelectedIndex).DisposeWith(disposables);
             this.Bind(ViewModel, vm => vm.GeoFileSourceUrl, v => v.cmbGetFilesSourceUrl.Text).DisposeWith(disposables);

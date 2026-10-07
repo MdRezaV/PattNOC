@@ -30,6 +30,14 @@ public sealed record RequestRoute(
 
 public static class AdapterFactory
 {
+    /// <summary>
+    /// Every upstream format this gateway can speak. A new style is added by
+    /// extending the enum, this list, and Create — request negotiation picks
+    /// formats up from here with no per-model changes.
+    /// </summary>
+    public static IReadOnlyList<EOpenCodeApiStyle> SupportedStyles() =>
+        [EOpenCodeApiStyle.ChatCompletions, EOpenCodeApiStyle.Responses];
+
     public static IUpstreamAdapter Create(EOpenCodeApiStyle style)
     {
         return style switch

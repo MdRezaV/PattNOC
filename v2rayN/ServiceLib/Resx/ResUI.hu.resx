@@ -724,7 +724,7 @@
     <value>Mux Multiplexing bekapcsolása</value>
   </data>
   <data name="TbSettingsN" xml:space="preserve">
-    <value>PattN beállítások</value>
+    <value>PattNOC beállítások</value>
   </data>
   <data name="TbSettingsPass" xml:space="preserve">
     <value>Hitelesítési jelszó</value>
@@ -1380,6 +1380,27 @@
   <data name="TbSettingsMixedConcurrencyCount" xml:space="preserve">
     <value>A párhuzamos tesztek száma több teszt során</value>
   </data>
+  <data name="TbSettingsRealDelayTestTimeout" xml:space="preserve">
+    <value>Real Delay Test Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsRealDelayTestConcurrent" xml:space="preserve">
+    <value>Real Delay Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsRealDelayTestRetry" xml:space="preserve">
+    <value>Real Delay Test Retry Count</value>
+  </data>
+  <data name="TbSettingsMultiTestDelayTimeout" xml:space="preserve">
+    <value>Multi Test Delay Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestSpeedTimeout" xml:space="preserve">
+    <value>Multi Test Speed Timeout (seconds)</value>
+  </data>
+  <data name="TbSettingsMultiTestConcurrent" xml:space="preserve">
+    <value>Multi Test Concurrent Count</value>
+  </data>
+  <data name="TbSettingsMultiTestRetry" xml:space="preserve">
+    <value>Multi Test Retry Count</value>
+  </data>
   <data name="TbSettingsExceptionTip2" xml:space="preserve">
     <value>Kivételek: Ne használjon proxy szervert a következő címekhez. Vesszővel (,) válassza el a bejegyzéseket.</value>
   </data>
@@ -1774,7 +1795,7 @@ The "Get Certificate" action may fail if a self-signed certificate is used or if
     <value>PreSharedKey</value>
   </data>
   <data name="menuExport2InnerUri" xml:space="preserve">
-    <value>Export PattN Internal Share Link to Clipboard</value>
+    <value>Export PattNOC Internal Share Link to Clipboard</value>
   </data>
   <data name="MsgCheckUpdateHasNewVersion" xml:space="preserve">
     <value>{0} has a new version available: {1}</value>

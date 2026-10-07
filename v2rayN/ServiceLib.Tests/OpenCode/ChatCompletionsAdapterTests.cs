@@ -149,6 +149,79 @@ public class ChatCompletionsAdapterTests
     }
 
     [Test]
+    public async Task BuildBody_FreeTier_StripsClientInjectedFields()
+    {
+        // Claude Code (and any SDK) injects sampling, length, and identity fields that
+        // the official OpenCode client never sends. The free tier fingerprints the whole
+        // envelope, not just the tools block, so all of them must be dropped before the
+        // request leaves the gateway — otherwise upstream answers FreeTierError.
+        // The caller's own tools are NOT fingerprintable (9Router preserves them and
+        // only canonicalises the quartet), so get_weather survives while the quartet
+        // is appended around it.
+        var req = Request(stream: true, maxTokens: 32000, user: "claude-code") with
+        {
+            Temperature = 0.7,
+            TopP = 0.95,
+            Tools =
+            [
+                new NormalizedTool
+                {
+                    Type = "function",
+                    Function = new NormalizedFunctionDef
+                    {
+                        Name = "get_weather",
+                        Description = "Get weather",
+                    },
+                },
+            ],
+        };
+
+        var adapter = new ChatCompletionsAdapter();
+        using var msg = adapter.BuildRequest(req, Target(), null, "req1");
+
+        var json = await msg.Content!.ReadAsStringAsync();
+        await json.Should().NotContain("temperature");
+        await json.Should().NotContain("top_p");
+        await json.Should().NotContain("max_tokens");
+        // "user" also appears as a message role, so match the injected identity field.
+        await json.Should().NotContain("\"user\":\"claude-code\"");
+        await json.Should().Contain("get_weather");
+
+        // The caller brought its own tools, so no tool_choice is forced — forcing
+        // "none" would silently disable the agent's tools.
+        await json.Should().NotContain("tool_choice");
+        await json.Should().Contain("\"name\":\"bash\"");
+        await json.Should().Contain("\"role\":\"user\"");
+    }
+
+    [Test]
+    public async Task BuildBody_FreeTier_StripsMaxOutputTokensOnResponsesStyle()
+    {
+        // Responses API names the length field max_output_tokens, so stripping only
+        // max_tokens would leave the Responses path fingerprintable.
+        var body = new Dictionary<string, object?>
+        {
+            ["model"] = "muse-spark-1.3-contributor-free",
+            ["input"] = new List<object?> { new Dictionary<string, object?> { ["role"] = "user", ["content"] = "Reply with OK." } },
+            ["stream"] = true,
+            ["temperature"] = 0.7,
+            ["top_p"] = 0.95,
+            ["max_output_tokens"] = 32000,
+            ["user"] = "claude-code",
+        };
+
+        OpenCodeFreeTier.ApplyBodyShape(body, EOpenCodeApiStyle.Responses);
+
+        await body.ContainsKey("temperature").Should().BeFalse();
+        await body.ContainsKey("top_p").Should().BeFalse();
+        await body.ContainsKey("max_output_tokens").Should().BeFalse();
+        await body.ContainsKey("user").Should().BeFalse();
+        await body.ContainsKey("model").Should().BeTrue();
+        await body.ContainsKey("stream").Should().BeTrue();
+        await body["tool_choice"]!.Should().BeEqualTo("auto");
+    }
+
+    [Test]
     public async Task BuildBody_SerializesModelMessagesAndSampling()
     {
         var req = Request(model: "big-pickle", maxTokens: 16, user: "agent") with
@@ -221,6 +294,134 @@ public class ChatCompletionsAdapterTests
         var json = JsonSerializer.Serialize(ChatCompletionsAdapter.BuildBody(req));
         await json.Should().Contain("\"response_format\"");
         await json.Should().Contain("json_object");
+    }
+
+    [Test]
+    public async Task BuildBody_NamedToolChoice_UsesOpenAiFunctionObjectForm()
+    {
+        var req = Request() with { ToolChoice = "get_weather" };
+
+        var json = JsonSerializer.Serialize(ChatCompletionsAdapter.BuildBody(req));
+
+        await json.Should().Contain("\"tool_choice\":{\"type\":\"function\",\"function\":{\"name\":\"get_weather\"}}");
+    }
+
+    [Test]
+    public async Task BuildBody_ToolMessages_AlwaysIncludeContentAndToolCallId()
+    {
+        var req = Request() with
+        {
+            Messages =
+            [
+                new NormalizedMessage { Role = "user", Content = "weather?" },
+                new NormalizedMessage
+                {
+                    Role = "assistant",
+                    Content = null,
+                    ToolCalls =
+                    [
+                        new NormalizedToolCall
+                        {
+                            Id = "call_1",
+                            Function = new NormalizedFunctionCall { Name = "get_weather", Arguments = "{}" },
+                        },
+                    ],
+                },
+                // Tool result with null content must still serialize content + tool_call_id.
+                new NormalizedMessage { Role = "tool", ToolCallId = "call_1", Content = null },
+            ],
+        };
+
+        var json = JsonSerializer.Serialize(ChatCompletionsAdapter.BuildBody(req));
+
+        await json.Should().Contain("\"tool_call_id\":\"call_1\"");
+        await json.Should().Contain("\"content\":\"\"");
+        await json.Should().Contain("\"content\":null");
+    }
+
+    [Test]
+    public async Task BuildBody_StopSequences_MapsToStop()
+    {
+        var req = Request() with { Stop = ["HUMAN:", "ASSISTANT:"] };
+
+        var json = JsonSerializer.Serialize(ChatCompletionsAdapter.BuildBody(req));
+
+        await json.Should().Contain("\"stop\":[\"HUMAN:\",\"ASSISTANT:\"]");
+    }
+
+    [Test]
+    public async Task ParseAnthropicRequest_MapsStopSequencesAndNamedToolChoice()
+    {
+        var payload = """
+            {
+              "model": "claude-sonnet-4-5",
+              "max_tokens": 1024,
+              "stop_sequences": ["END"],
+              "tool_choice": {"type": "tool", "name": "get_weather"},
+              "messages": [{"role": "user", "content": "hi"}]
+            }
+            """;
+
+        var req = ClientFormat.ParseAnthropicRequest(payload);
+
+        await req.Should().NotBeNull();
+        await req!.Stop.Should().BeEquivalentTo(["END"]);
+        await req.ToolChoice.Should().BeEqualTo("get_weather");
+    }
+
+    [Test]
+    public async Task ParseChatRequest_ResolvesFunctionToolChoiceObjectToToolName()
+    {
+        var payload = """
+            {
+              "model": "gpt-4o",
+              "tool_choice": {"type": "function", "function": {"name": "get_weather"}},
+              "messages": [{"role": "user", "content": "hi"}],
+              "stop": "END"
+            }
+            """;
+
+        var req = ClientFormat.ParseChatRequest(payload);
+
+        await req.Should().NotBeNull();
+        await req!.ToolChoice.Should().BeEqualTo("get_weather");
+        await req.Stop.Should().BeEquivalentTo(["END"]);
+    }
+
+    [Test]
+    public async Task ResponsesAdapter_BuildBody_NamedToolChoice_UsesFunctionObjectForm()
+    {
+        var req = Request() with { ToolChoice = "get_weather" };
+
+        var json = JsonSerializer.Serialize(ResponsesAdapter.BuildBody(req));
+
+        await json.Should().Contain("\"tool_choice\":{\"type\":\"function\",\"name\":\"get_weather\"}");
+    }
+
+    [Test]
+    public async Task WriteChatCompletion_ToolCallTurn_IncludesNullContent()
+    {
+        var resp = new NormalizedCompletionResponse
+        {
+            Id = "chatcmpl-1",
+            Model = "big-pickle",
+            Content = null,
+            ToolCalls =
+            [
+                new NormalizedToolCall
+                {
+                    Id = "call_1",
+                    Function = new NormalizedFunctionCall { Name = "get_weather", Arguments = "{}" },
+                },
+            ],
+            FinishReason = "tool_calls",
+        };
+
+        var json = ClientFormat.WriteChatCompletion(resp, "big-pickle");
+
+        await json.Should().Contain("\"content\":null");
+        await json.Should().Contain("\"tool_calls\"");
+        await json.Should().Contain("\"finish_reason\":\"tool_calls\"");
     }
 
     [Test]
@@ -375,5 +576,86 @@ public class ChatCompletionsAdapterTests
         await usage.Should().NotBeNull();
         await usage!.PromptTokens.Should().BeEqualTo(3);
         await usage.CompletionTokens.Should().BeEqualTo(1);
+    }
+
+    [Test]
+    public async Task BuildRequest_WithApiKey_PreservesClientToolsAndSampling()
+    {
+        // Body shaping exists to satisfy the unauthenticated free tier. A keyed
+        // target must keep the caller's tools or agents can never invoke them.
+        var req = Request(stream: true) with
+        {
+            Temperature = 0.7,
+            MaxTokens = 32000,
+            Tools =
+            [
+                new NormalizedTool
+                {
+                    Function = new NormalizedFunctionDef { Name = "get_weather" },
+                },
+            ],
+        };
+
+        var adapter = new ChatCompletionsAdapter();
+        using var msg = adapter.BuildRequest(req, Target(), "sk-test-123", "req1");
+
+        var json = await msg.Content!.ReadAsStringAsync();
+        await json.Should().Contain("\"name\":\"get_weather\"");
+        await json.Should().Contain("\"temperature\":0.7");
+        await json.Should().Contain("\"max_tokens\":32000");
+        await json.Should().NotContain("\"name\":\"bash\"");
+        await json.Should().NotContain("\"tool_choice\"");
+    }
+
+    [Test]
+    public async Task MaterializeAsync_EventStream_AggregatesTextChunks()
+    {
+        // Upstream always streams (both adapters force stream=true), so a
+        // non-streaming client is answered from SSE rather than a JSON body.
+        var sse = string.Join("\n",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}",
+            "",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"lo\"},\"finish_reason\":\"stop\"}]}",
+            "",
+            "data: [DONE]",
+            "");
+        var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new StringContent(sse, Encoding.UTF8, "text/event-stream"),
+        };
+        var adapter = new ChatCompletionsAdapter();
+
+        var result = await adapter.MaterializeAsync(response, CancellationToken.None);
+
+        await result.Content.Should().BeEqualTo("Hello");
+        await result.FinishReason.Should().BeEqualTo("stop");
+    }
+
+    [Test]
+    public async Task MaterializeAsync_EventStream_AggregatesToolCallChunks()
+    {
+        var sse = string.Join("\n",
+            "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"id\":\"call_1\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"\"}}]}}]}",
+            "",
+            "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"id\":\"call_1\",\"function\":{\"arguments\":\"{\\\"city\\\":\\\"Paris\\\"}\"}}]}}]}",
+            "",
+            "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}",
+            "",
+            "data: [DONE]",
+            "");
+        var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new StringContent(sse, Encoding.UTF8, "text/event-stream"),
+        };
+        var adapter = new ChatCompletionsAdapter();
+
+        var result = await adapter.MaterializeAsync(response, CancellationToken.None);
+
+        await result.ToolCalls.Should().NotBeNull();
+        await result.ToolCalls!.Count.Should().BeEqualTo(1);
+        await result.ToolCalls[0].Id.Should().BeEqualTo("call_1");
+        await result.ToolCalls[0].Function!.Name.Should().BeEqualTo("get_weather");
+        await result.ToolCalls[0].Function!.Arguments.Should().BeEqualTo("{\"city\":\"Paris\"}");
+        await result.FinishReason.Should().BeEqualTo("tool_calls");
     }
 }

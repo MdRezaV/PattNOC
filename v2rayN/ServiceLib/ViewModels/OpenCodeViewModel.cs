@@ -11,9 +11,14 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
     public ReactiveCommand<RxVoid, RxVoid> TestConnectionCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> SaveApiKeyCmd { get; }
     public ReactiveCommand<RxVoid, RxVoid> ClearApiKeyCmd { get; }
+    public ReactiveCommand<RxVoid, RxVoid> MovePriorityUpCmd { get; }
+    public ReactiveCommand<RxVoid, RxVoid> MovePriorityDownCmd { get; }
+    public ReactiveCommand<RxVoid, RxVoid> RemovePriorityCmd { get; }
 
     public BulkObservableCollection<OpenCodeModelRow> ModelRows { get; } = [];
+    public BulkObservableCollection<OpenCodeModelRow> PriorityRows { get; } = [];
     private List<OpenCodeModelRow> _allModelRows = [];
+    private readonly List<string> _modelOrder = [];
 
     private string _originalApiKey = "";
     private bool _syncingSelection;
@@ -49,6 +54,8 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
     [Reactive] public partial int ModelApiStyleFilterIndex { get; set; }
     [Reactive] public partial int ModelSortIndex { get; set; }
     [Reactive] public partial OpenCodeModelRow? SelectedModelRow { get; set; }
+    [Reactive] public partial OpenCodeModelRow? SelectedPriorityRow { get; set; }
+    [Reactive] public partial bool HasPriorityRows { get; set; }
     [Reactive] public partial string SelectedModelDisplay { get; set; }
     [Reactive] public partial string ModelCountDisplay { get; set; }
 
@@ -63,10 +70,14 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
         TestConnectionCmd = ReactiveCommand.CreateFromTask(TestConnectionAsync);
         SaveApiKeyCmd = ReactiveCommand.CreateFromTask(SaveApiKeyAsync);
         ClearApiKeyCmd = ReactiveCommand.CreateFromTask(ClearApiKeyAsync);
+        MovePriorityUpCmd = ReactiveCommand.Create(() => MovePriority(-1));
+        MovePriorityDownCmd = ReactiveCommand.Create(() => MovePriority(1));
+        RemovePriorityCmd = ReactiveCommand.Create(RemovePriority);
 
         foreach (var cmd in new[]
                  {
                      SaveCmd, RefreshModelsCmd, TestConnectionCmd, SaveApiKeyCmd, ClearApiKeyCmd,
+                     MovePriorityUpCmd, MovePriorityDownCmd, RemovePriorityCmd,
                  })
         {
             cmd.ThrownExceptions.Subscribe(ex =>
@@ -93,8 +104,7 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
                     return;
                 }
 
-                PersistSettings();
-                SyncSelectionFromDefaultModel();
+                MoveDefaultModelToFront();
             });
         this.WhenAnyValue(x => x.GatewayHost)
             .Skip(1)
@@ -128,40 +138,14 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
             .Skip(1)
             .Subscribe(x => { _ = LoadModelsAsync(); });
 
-        this.WhenAnyValue(x => x.SelectedModelRow)
-            .Where(r => r is not null)
-            .Subscribe(r =>
-            {
-                if (_syncingSelection)
-                {
-                    return;
-                }
-
-                _syncingSelection = true;
-                try
-                {
-                    if (!DefaultModel.Equals(r!.Id, StringComparison.OrdinalIgnoreCase))
-                    {
-                        DefaultModel = r.Id;
-                    }
-
-                    foreach (var row in _allModelRows)
-                    {
-                        row.IsSelected = row.Id.Equals(r.Id, StringComparison.OrdinalIgnoreCase);
-                    }
-
-                    UpdateSelectedModelDisplay();
-                }
-                finally
-                {
-                    _syncingSelection = false;
-                }
-            });
-
         this.WhenAnyValue(x => x.ModelFilter)
             .Subscribe(_ => ApplyModelFilterAndSort());
         this.WhenAnyValue(x => x.FilterFreeOnly)
-            .Subscribe(_ => ApplyModelFilterAndSort());
+            .Subscribe(_ =>
+            {
+                PersistSettings();
+                ApplyModelFilterAndSort();
+            });
         this.WhenAnyValue(x => x.ModelApiStyleFilterIndex)
             .Subscribe(_ => ApplyModelFilterAndSort());
         this.WhenAnyValue(x => x.ModelSortIndex)
@@ -176,8 +160,13 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
         var item = _config.OpenCodeItem!;
         Enabled = item.Enabled;
         GatewayEnabled = item.GatewayEnabled;
+        FilterFreeOnly = item.FreeOnly;
         DefaultTarget = item.DefaultTarget;
         DefaultModel = item.DefaultModel;
+        _modelOrder.Clear();
+        _modelOrder.AddRange(item.TestModelOrder.Count == 0 && item.DefaultModel.IsNotEmpty()
+            ? [item.DefaultModel]
+            : item.TestModelOrder);
         GatewayHost = item.GatewayHost;
         GatewayPort = item.GatewayPort;
         ConnectTimeoutSeconds = item.ConnectTimeoutSeconds;
@@ -194,8 +183,9 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
         ApiKeySet = _originalApiKey.IsNotEmpty();
 
         ClientExampleText =
-            $"Base URL: http://{item.GatewayHost}:{item.GatewayPort}/v1\n" +
-            $"Model: {item.DefaultModel}";
+            $"OpenAI base URL: http://{item.GatewayHost}:{item.GatewayPort}/v1\n" +
+            $"Claude Code ANTHROPIC_BASE_URL: http://{item.GatewayHost}:{item.GatewayPort}/claude\n" +
+            $"Model: claude-{item.DefaultModel}";
     }
 
     private OpenCodeTargetItem? GetTarget(OpenCodeItem item)
@@ -212,8 +202,10 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
             var item = _config.OpenCodeItem!;
             item.Enabled = Enabled;
             item.GatewayEnabled = GatewayEnabled;
+            item.FreeOnly = FilterFreeOnly;
             item.DefaultTarget = DefaultTarget;
             item.DefaultModel = DefaultModel;
+            item.TestModelOrder = [.. _modelOrder];
             item.GatewayHost = GatewayHost;
             item.GatewayPort = GatewayPort;
             item.ConnectTimeoutSeconds = ConnectTimeoutSeconds;
@@ -230,12 +222,26 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
             }
 
             OpenCodeConfigDefaults.Normalize(item);
+            if (!DefaultModel.Equals(item.DefaultModel))
+            {
+                _syncingSelection = true;
+                try
+                {
+                    DefaultModel = item.DefaultModel;
+                }
+                finally
+                {
+                    _syncingSelection = false;
+                }
+            }
+
             OpenCodeManager.Instance.SaveSettings(item);
             _ = ConfigHandler.SaveConfig(_config);
 
             ClientExampleText =
-                $"Base URL: http://{item.GatewayHost}:{item.GatewayPort}/v1\n" +
-                $"Model: {item.DefaultModel}";
+                $"OpenAI base URL: http://{item.GatewayHost}:{item.GatewayPort}/v1\n" +
+                $"Claude Code ANTHROPIC_BASE_URL: http://{item.GatewayHost}:{item.GatewayPort}/claude\n" +
+                $"Model: claude-{item.DefaultModel}";
         }
         catch (Exception ex)
         {
@@ -330,15 +336,25 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
         {
             var models = OpenCodeManager.Instance.GetModels(DefaultTarget);
             _allModelRows = models.Select(m => new OpenCodeModelRow(m)).ToList();
+            foreach (var row in _allModelRows)
+            {
+                row.WhenAnyValue(r => r.IsSelected)
+                    .Skip(1)
+                    .Subscribe(_ => OnRowIsSelectedChanged(row));
+            }
 
             _syncingSelection = true;
             try
             {
-                foreach (var row in _allModelRows)
+                if (_allModelRows.Count > 0)
                 {
-                    row.IsSelected = row.Id.Equals(DefaultModel, StringComparison.OrdinalIgnoreCase);
+                    // Models that left the catalog can no longer be tested. Never prune on an
+                    // empty catalog — that would silently drop a saved order.
+                    _modelOrder.RemoveAll(id =>
+                        _allModelRows.All(r => !r.Id.Equals(id, StringComparison.OrdinalIgnoreCase)));
                 }
 
+                RebuildSelectionState();
                 SelectedModelRow = _allModelRows.FirstOrDefault(r => r.IsSelected);
             }
             finally
@@ -355,6 +371,125 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
         }
 
         await Task.CompletedTask;
+    }
+
+    private void RebuildSelectionState()
+    {
+        foreach (var row in _allModelRows)
+        {
+            var index = _modelOrder.FindIndex(id => id.Equals(row.Id, StringComparison.OrdinalIgnoreCase));
+            row.IsSelected = index >= 0;
+            row.Priority = index >= 0 ? index + 1 : 0;
+        }
+
+        var previousId = SelectedPriorityRow?.Id;
+        PriorityRows.ReplaceRange(_modelOrder
+            .Select(id => _allModelRows.FirstOrDefault(r => r.Id.Equals(id, StringComparison.OrdinalIgnoreCase)))
+            .OfType<OpenCodeModelRow>());
+        HasPriorityRows = PriorityRows.Count > 0;
+        SelectedPriorityRow = previousId is null
+            ? PriorityRows.FirstOrDefault()
+            : PriorityRows.FirstOrDefault(r => r.Id.Equals(previousId, StringComparison.OrdinalIgnoreCase))
+              ?? PriorityRows.FirstOrDefault();
+    }
+
+    private void OnRowIsSelectedChanged(OpenCodeModelRow row)
+    {
+        if (_syncingSelection)
+        {
+            return;
+        }
+
+        if (row.IsSelected)
+        {
+            if (!_modelOrder.Any(id => id.Equals(row.Id, StringComparison.OrdinalIgnoreCase)))
+            {
+                _modelOrder.Add(row.Id);
+            }
+        }
+        else
+        {
+            _modelOrder.RemoveAll(id => id.Equals(row.Id, StringComparison.OrdinalIgnoreCase));
+        }
+
+        CommitModelOrder();
+    }
+
+    private void CommitModelOrder()
+    {
+        _syncingSelection = true;
+        try
+        {
+            foreach (var row in _allModelRows)
+            {
+                row.Priority = 0;
+                row.IsSelected = false;
+            }
+
+            RebuildSelectionState();
+            DefaultModel = _modelOrder.Count > 0 ? _modelOrder[0] : string.Empty;
+        }
+        finally
+        {
+            _syncingSelection = false;
+        }
+
+        PersistSettings();
+        UpdateSelectedModelDisplay();
+    }
+
+    private void MovePriority(int offset)
+    {
+        var id = SelectedPriorityRow?.Id;
+        var index = id is null ? -1 : _modelOrder.FindIndex(m => m.Equals(id, StringComparison.OrdinalIgnoreCase));
+        var target = index + offset;
+        if (index < 0 || target < 0 || target >= _modelOrder.Count)
+        {
+            return;
+        }
+
+        (_modelOrder[index], _modelOrder[target]) = (_modelOrder[target], _modelOrder[index]);
+        CommitModelOrder();
+    }
+
+    private void RemovePriority()
+    {
+        var id = SelectedPriorityRow?.Id;
+        if (id is null)
+        {
+            return;
+        }
+
+        if (_modelOrder.RemoveAll(m => m.Equals(id, StringComparison.OrdinalIgnoreCase)) == 0)
+        {
+            return;
+        }
+
+        CommitModelOrder();
+    }
+
+    private void MoveDefaultModelToFront()
+    {
+        if (DefaultModel.IsNullOrEmpty())
+        {
+            if (_modelOrder.Count > 0)
+            {
+                _modelOrder.Clear();
+                CommitModelOrder();
+            }
+
+            return;
+        }
+
+        // Only models from the catalog can carry a priority; partially typed ids are ignored.
+        if (_allModelRows.All(r => !r.Id.Equals(DefaultModel, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        _modelOrder.RemoveAll(m => m.Equals(DefaultModel, StringComparison.OrdinalIgnoreCase));
+        _modelOrder.Insert(0, DefaultModel);
+        CommitModelOrder();
     }
 
     private void ApplyModelFilterAndSort()
@@ -400,26 +535,6 @@ public partial class OpenCodeViewModel : MyReactiveObject, ICloseable
         {
             Logging.SaveLog(Tag, ex);
         }
-    }
-
-    private void SyncSelectionFromDefaultModel()
-    {
-        _syncingSelection = true;
-        try
-        {
-            foreach (var row in _allModelRows)
-            {
-                row.IsSelected = row.Id.Equals(DefaultModel, StringComparison.OrdinalIgnoreCase);
-            }
-
-            SelectedModelRow = _allModelRows.FirstOrDefault(r => r.IsSelected);
-        }
-        finally
-        {
-            _syncingSelection = false;
-        }
-
-        UpdateSelectedModelDisplay();
     }
 
     private void UpdateSelectedModelDisplay()
@@ -515,4 +630,5 @@ public sealed partial class OpenCodeModelRow : MyReactiveObject
     public bool SupportsStreaming => Model.SupportsStreaming;
 
     [Reactive] public partial bool IsSelected { get; set; }
+    [Reactive] public partial int Priority { get; set; }
 }
